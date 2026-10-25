@@ -145,6 +145,9 @@ func (h HostMaintenance) Run(ctx context.Context, exe string, o Options) (Result
 		result, err = s.Run(ctx, exe, o)
 	}
 	appendResult("Host ("+host.Root+")", result, err)
+	if err != nil && ctx.Err() != nil {
+		return Result{130, strings.Join(lines, "\n")}, nil
+	}
 	return Result{code, strings.Join(lines, "\n")}, nil
 }
 

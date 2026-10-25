@@ -2,6 +2,7 @@ package selfupdate
 
 import (
 	"fmt"
+	"io/fs"
 	"path/filepath"
 	"strings"
 
@@ -59,6 +60,43 @@ func backendInventory(root, metadata string, candidate bool, release runtimeinst
 		return nil, err
 	}
 	result[backendMetadata] = h
+	// Every executable backend file must be owned. Preserving an unlisted
+	// library would produce a Store that its runtime correctly refuses to use.
+	for _, namespace := range []string{".portscoop/backend/", "scoop/apps/scoop/current/"} {
+		directory := strings.TrimSuffix(namespace, "/")
+		if candidate {
+			source, _ := backendSource(namespace + "placeholder")
+			directory = filepath.ToSlash(filepath.Dir(source))
+		}
+		path, err := runtimeinstall.CheckPath(root, directory)
+		if err != nil {
+			return nil, err
+		}
+		err = filepath.WalkDir(path, func(path string, e fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if e.IsDir() {
+				return nil
+			}
+			rel, err := filepath.Rel(root, path)
+			if err != nil {
+				return err
+			}
+			rel = filepath.ToSlash(rel)
+			owned := rel
+			if candidate {
+				owned = namespace + strings.TrimPrefix(rel, directory+"/")
+			}
+			if result[owned] == "" {
+				return fmt.Errorf("unowned managed backend file: %s", rel)
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
 	return result, nil
 }
 

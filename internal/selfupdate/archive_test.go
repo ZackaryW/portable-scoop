@@ -62,7 +62,7 @@ func releaseEntries(t *testing.T) []archiveEntry {
 	}
 	files["backend/backend.json"] = marshal(environment.BackendMetadata{
 		SchemaVersion: 1, ProtocolMajor: 1, UpstreamRevision: upstream, PatchRevision: "fixture-v1",
-		Artifacts: map[string]string{environment.AdapterRelative: digest(files["backend/adapter/entry.ps1"]), environment.EngineEntryRelative: digest(files["backend/engine/bin/scoop.ps1"])},
+		Artifacts: map[string]string{environment.AdapterRelative: digest(files["backend/adapter/entry.ps1"]), environment.EngineEntryRelative: digest(files["backend/engine/bin/scoop.ps1"]), "scoop/apps/scoop/current/.hidden": digest(files["backend/engine/.hidden"])},
 	})
 	files["runtime-update.json"] = marshal(runtimeinstall.Descriptor{
 		Schema: 1, Protocol: 1, Version: "0.3.2-fixture", Platform: "windows-amd64",

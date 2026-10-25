@@ -44,6 +44,12 @@ func (noVolumes) Volumes(context.Context) ([]resolver.Volume, error) { return ni
 
 type unexpectedWorker struct{ t *testing.T }
 
+type workerFunc func(context.Context, *Transaction, bool) (Result, error)
+
+func (f workerFunc) Handoff(c context.Context, tx *Transaction, r bool) (Result, error) {
+	return f(c, tx, r)
+}
+
 func (w unexpectedWorker) Handoff(context.Context, *Transaction, bool) (Result, error) {
 	w.t.Fatal("unexpected detached worker")
 	return Result{}, nil
@@ -265,5 +271,70 @@ func TestBusyStoreLeavesRecoverableTransaction(t *testing.T) {
 	}
 	if _, err = runtimeinstall.VerifyReceipt(tx.Target.Root, tx.Target.ID); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestHostHandoffFollowsCompletedStoreUpdates(t *testing.T) {
+	h, net, tx, _ := maintenanceFixture(t)
+	var descriptor runtimeinstall.Descriptor
+	if err := runtimeinstall.Read(tx.Controller.Root, runtimeinstall.DescriptorName, &descriptor); err != nil {
+		t.Fatal(err)
+	}
+	descriptor.Version = "0.3.1"
+	if err := runtimeinstall.Write(tx.Controller.Root, runtimeinstall.DescriptorName, descriptor); err != nil {
+		t.Fatal(err)
+	}
+	refreshFixtureInventory(t, tx.Controller.Root)
+	called := false
+	h.Service.Worker = workerFunc(func(_ context.Context, hostTx *Transaction, recover bool) (Result, error) {
+		called = true
+		store, err := (Disk{}).Select(filepath.Join(tx.Target.Root, "psp.exe"), true)
+		if err != nil || store.Version != "0.3.2-fixture" {
+			t.Fatalf("Store not completed before Host handoff: %v %v", store, err)
+		}
+		if hostTx.Target.Kind != "host" || recover {
+			t.Fatal("incorrect handoff target")
+		}
+		return Result{0, "Accepted Host transaction; inspect --status."}, nil
+	})
+	r, err := h.Run(context.Background(), filepath.Join(tx.Controller.Root, "psp.exe"), Options{})
+	if err != nil || r.Code != 0 || !called || !strings.Contains(r.Message, "Accepted Host transaction") {
+		t.Fatalf("%#v %v", r, err)
+	}
+	if net.resolutions != 1 || net.downloads != 2 {
+		t.Fatalf("discovery/downloads %d/%d", net.resolutions, net.downloads)
+	}
+	status, err := h.Run(context.Background(), filepath.Join(tx.Controller.Root, "psp.exe"), Options{Status: true})
+	if err != nil || status.Code != 3 || !strings.Contains(status.Message, "completed:") {
+		t.Fatalf("pending aggregate %#v %v", status, err)
+	}
+}
+
+type cancellingStorage struct {
+	Storage
+	cancel     context.CancelFunc
+	executable string
+	reads      int
+}
+
+func (s *cancellingStorage) Select(exe string, verify bool) (runtimeinstall.Target, error) {
+	if exe == s.executable {
+		s.reads++
+		if s.reads == 2 {
+			s.cancel()
+			return runtimeinstall.Target{}, context.Canceled
+		}
+	}
+	return s.Storage.Select(exe, verify)
+}
+func TestCancellationDuringFinalHostUpdateReturns130(t *testing.T) {
+	h, _, tx, _ := maintenanceFixture(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	exe := filepath.Join(tx.Controller.Root, "psp.exe")
+	h.Service.Files = &cancellingStorage{Storage: Disk{}, cancel: cancel, executable: exe}
+	r, err := h.Run(ctx, exe, Options{Check: true})
+	if err != nil || r.Code != 130 {
+		t.Fatalf("%#v %v", r, err)
 	}
 }

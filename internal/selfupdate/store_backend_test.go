@@ -102,7 +102,7 @@ func TestManagedStoreUpgradeAndRecovery(t *testing.T) {
 	for _, recover := range []bool{false, true} {
 		t.Run(map[bool]string{false: "upgrade", true: "interrupted-recovery"}[recover], func(t *testing.T) {
 			tx := storeTransaction(t)
-			preserved := []string{environment.MarkerRelative, "scoop/apps/example/current/app.exe", "scoop/persist/example/data", "scoop/buckets/main/app.json", "scoop/cache/a", "scoop/shims/app.exe", ".portscoop/state/paths.json", ".portscoop/backend/unowned.txt"}
+			preserved := []string{environment.MarkerRelative, "scoop/apps/example/current/app.exe", "scoop/persist/example/data", "scoop/buckets/main/app.json", "scoop/cache/a", "scoop/shims/app.exe", ".portscoop/state/paths.json", ".portscoop/state/unowned.txt"}
 			hashes := map[string]string{}
 			for _, p := range preserved {
 				if p != environment.MarkerRelative {
@@ -158,7 +158,7 @@ func TestManagedStoreUpgradeAndRecovery(t *testing.T) {
 }
 
 func TestManagedStoreRejectsUnownedOrAlteredArtifacts(t *testing.T) {
-	for _, kind := range []string{"drift", "collision", "outside", "traversal", "candidate-digest", "controller"} {
+	for _, kind := range []string{"drift", "collision", "outside", "unowned", "traversal", "candidate-digest", "controller"} {
 		t.Run(kind, func(t *testing.T) {
 			tx := storeTransaction(t)
 			var b environment.BackendMetadata
@@ -166,6 +166,8 @@ func TestManagedStoreRejectsUnownedOrAlteredArtifacts(t *testing.T) {
 				t.Fatal(err)
 			}
 			switch kind {
+			case "unowned":
+				fixtureFile(t, tx.Target.Root, "scoop/apps/scoop/current/extra.ps1", "unowned library")
 			case "drift":
 				fixtureFile(t, tx.Target.Root, environment.AdapterRelative, "user edited")
 			case "collision":
@@ -207,6 +209,49 @@ func TestManagedStoreRejectsUnownedOrAlteredArtifacts(t *testing.T) {
 	}
 }
 
+func TestManagedStoreReplacementFailureRollsBack(t *testing.T) {
+	tx := storeTransaction(t)
+	if err := (Disk{}).Prepare(tx); err != nil {
+		t.Fatal(err)
+	}
+	if err := (Disk{}).Publish(tx); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeJournal(tx, Journal{Schema: 1, ID: tx.Target.ID, Nonce: tx.Nonce, Phase: "accepted"}); err != nil {
+		t.Fatal(err)
+	}
+	// An open Windows file prevents rename after earlier operations committed.
+	f, err := os.Open(filepath.Join(tx.Target.Root, environment.EngineEntryRelative))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	if err = commit(context.Background(), tx.Directory, false); err == nil {
+		t.Fatal("replacement unexpectedly succeeded")
+	}
+	if err = verifyInstalled(tx, true); err != nil {
+		t.Fatal(err)
+	}
+	j, err := readJournal(tx)
+	if err != nil || j.Phase != "failed" || j.Applied == 0 {
+		t.Fatalf("rollback journal %#v %v", j, err)
+	}
+	if _, err = runtimeinstall.ReadPending(tx.Target); !os.IsNotExist(err) {
+		t.Fatalf("rollback left pending: %v", err)
+	}
+}
+
+func TestManagedStoreRejectsChangedControllerSnapshot(t *testing.T) {
+	tx := storeTransaction(t)
+	if err := (Disk{}).Prepare(tx); err != nil {
+		t.Fatal(err)
+	}
+	fixtureFile(t, tx.Directory, "controller/psp.exe", "changed helper provenance")
+	if err := verifySources(tx); err == nil {
+		t.Fatal("accepted altered controller")
+	}
+}
+
 func refreshFixtureInventory(t *testing.T, root string) {
 	t.Helper()
 	var r runtimeinstall.Release
@@ -218,6 +263,9 @@ func refreshFixtureInventory(t *testing.T, root string) {
 			return err
 		}
 		if e.IsDir() {
+			if e.Name() == runtimeinstall.HostControl {
+				return filepath.SkipDir
+			}
 			return nil
 		}
 		rel, _ := filepath.Rel(root, p)
