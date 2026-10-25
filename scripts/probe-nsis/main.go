@@ -76,7 +76,11 @@ func (w *boundedWriter) Write(p []byte) (int, error) {
 }
 
 func run(tool string, args []string, output io.Writer, limit int64) (int64, string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	return runFor(tool, args, output, limit, 30*time.Second)
+}
+
+func runFor(tool string, args []string, output io.Writer, limit int64, timeout time.Duration) (int64, string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	var diagnostic bytes.Buffer
 	out := &boundedWriter{w: output, remaining: limit, cancel: cancel}
@@ -121,6 +125,25 @@ func parseListing(text string) ([]member, error) {
 		return nil, fmt.Errorf("no listed members")
 	}
 	return result, nil
+}
+
+func boundaries(members []member, name string) ([]int64, error) {
+	var sizes []int64
+	unknown := false
+	for _, m := range members {
+		if m.Path == name {
+			if m.Size == nil {
+				unknown = true
+				sizes = append(sizes, -1)
+			} else {
+				sizes = append(sizes, *m.Size)
+			}
+		}
+	}
+	if len(sizes) > 1 && unknown {
+		return nil, fmt.Errorf("ambiguous duplicate boundaries")
+	}
+	return sizes, nil
 }
 
 func main() {
@@ -175,6 +198,10 @@ func main() {
 			continue
 		}
 		seen[m.Path] = true
+		if _, err := boundaries(r.Members, m.Path); err != nil {
+			r.Streams = append(r.Streams, streamResult{Path: m.Path, Error: err.Error()})
+			continue
+		}
 		h := sha256.New()
 		n, diagnostic, err := run(*tool, []string{"x", "-so", "-spd", "-ssc", "-tNsis", "-bso0", "-bsp0", "-bse2", "--", *payload, m.Path}, h, 128<<20)
 		s := streamResult{Path: m.Path, Bytes: n, SHA256: hex.EncodeToString(h.Sum(nil)), Stderr: diagnostic}
