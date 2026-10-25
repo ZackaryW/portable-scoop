@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -12,6 +13,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -36,6 +38,32 @@ func TestApplicationProcessFixture(t *testing.T) {
 	}
 	dir := os.Getenv("PSPE_TEST_DIR")
 	exe, _ := os.Executable()
+	if mode == "nested-restrictive-owner" {
+		p, err := (Native{}).Start(context.Background(), Command{Executable: exe, Args: []string{"-test.run=^TestApplicationProcessFixture$"}, Environment: appFixtureEnv("restrictive-owner", dir), Mode: Wait})
+		if err != nil {
+			panic(err)
+		}
+		code, err := p.Wait(context.Background())
+		if err != nil {
+			panic(err)
+		}
+		os.Exit(code)
+	}
+	if mode == "restrictive-owner" {
+		p, err := (Native{}).Start(context.Background(), Command{Executable: exe, Args: []string{"-test.run=^TestApplicationProcessFixture$"}, Environment: appFixtureEnv("survivor", dir), Mode: Detach})
+		result := "accepted"
+		if err != nil {
+			result = err.Error()
+		} else {
+			if err := p.Commit(context.Background()); err != nil {
+				result = err.Error()
+			}
+		}
+		if err := os.WriteFile(filepath.Join(dir, "detach-result.txt"), []byte(result), 0600); err != nil {
+			panic(err)
+		}
+		os.Exit(0)
+	}
 	if mode == "streams" || mode == "batch-detached" {
 		input, _ := io.ReadAll(os.Stdin)
 		cwd, _ := os.Getwd()
@@ -251,6 +279,7 @@ func TestForegroundChildCannotRetainCallersOutputPipe(t *testing.T) {
 }
 
 func TestDetachedPendingAbortAndCommittedLifetime(t *testing.T) {
+	requireDetachedCapability(t)
 	for _, commit := range []bool{false, true} {
 		t.Run(strconv.FormatBool(commit), func(t *testing.T) {
 			spec, dir := fixtureCommand(t, "survivor", Detach)
@@ -286,6 +315,7 @@ func TestDetachedPendingAbortAndCommittedLifetime(t *testing.T) {
 }
 
 func TestDetachedSurvivesHelperNormalExit(t *testing.T) {
+	requireDetachedCapability(t)
 	spec, dir := fixtureCommand(t, "owner", Wait)
 	p, err := (Native{}).Start(context.Background(), spec)
 	if err != nil {
@@ -299,5 +329,63 @@ func TestDetachedSurvivesHelperNormalExit(t *testing.T) {
 	cleanupApp(t, pid)
 	if !appAlive(pid) {
 		t.Fatal("application died with nested helper job")
+	}
+}
+
+func requireDetachedCapability(t *testing.T) {
+	t.Helper()
+	_, err := probeExternalJob(context.Background())
+	var external *ExternalJobError
+	if errors.As(err, &external) {
+		t.Skipf("this test host retains an external job (%v); success is qualified in the disposable VM", err)
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDetachedRejectsResidualRestrictiveAncestorBeforeUserCode(t *testing.T) {
+	dir := testutil.TempDir(t)
+	exe, _ := os.Executable()
+	job, err := windows.CreateJobObject(nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer windows.CloseHandle(job)
+	if err := setJobLimits(job, windows.JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, exe, "-test.run=^TestApplicationProcessFixture$")
+	cmd.Env = appFixtureEnv("nested-restrictive-owner", dir)
+	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: windows.CREATE_SUSPENDED, HideWindow: true}
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	defer cmd.Process.Kill()
+	handle, err := windows.OpenProcess(windows.PROCESS_SET_QUOTA|windows.PROCESS_TERMINATE|windows.SYNCHRONIZE, false, uint32(cmd.Process.Pid))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer windows.CloseHandle(handle)
+	if err := windows.AssignProcessToJobObject(job, handle); err != nil {
+		t.Fatal(err)
+	}
+	if err := resumeApplication(uint32(cmd.Process.Pid)); err != nil {
+		t.Fatal(err)
+	}
+	if err := cmd.Wait(); err != nil {
+		t.Fatal(fmt.Errorf("nested job fixture: %w", err))
+	}
+	data, err := os.ReadFile(filepath.Join(dir, "detach-result.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "external job") {
+		t.Fatalf("unsafe detached acknowledgement under restrictive ancestor: %s", data)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "survivor.pid")); !os.IsNotExist(err) {
+		t.Fatal("unqualified child executed before external-job rejection", err)
 	}
 }

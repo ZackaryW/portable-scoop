@@ -74,6 +74,7 @@ func TestBatchRejectsUnqualifiedFormsBeforeStart(t *testing.T) {
 }
 
 func TestBatchDetachedSurvivesAndNeedsNoInvocationFiles(t *testing.T) {
+	requireDetachedCapability(t)
 	spec, dir, target := batchFixture(t, "batch-detached")
 	spec.Mode = Detach
 	spec.Args = []string{"", "%PATH%", "!data!", "--key=value", "&|<>"}

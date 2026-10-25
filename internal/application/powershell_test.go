@@ -65,6 +65,7 @@ exit 37
 }
 
 func TestPowerShellDetachedConsumesPayloadAndSurvives(t *testing.T) {
+	requireDetachedCapability(t)
 	local := envFixture(t, map[string]string{})
 	target := filepath.Join(local.Paths.Root, "detached.ps1")
 	source := `[IO.File]::WriteAllText((Join-Path $env:PORTSCOOP_ROOT 'ps-detached.json'), (@{arguments=@($args);pid=$PID;control=$env:PORTSCOOP_PS_CONTROL} | ConvertTo-Json -Compress), [Text.UTF8Encoding]::new($false))
@@ -114,6 +115,7 @@ Start-Sleep -Seconds 30
 }
 
 func TestPowerShellStartupFailureAndCanceledHandoffLeaveNoAppOrFiles(t *testing.T) {
+	requireDetachedCapability(t)
 	for _, cancelHandoff := range []bool{false, true} {
 		t.Run(map[bool]string{false: "invalid named parameter", true: "cancel before handoff"}[cancelHandoff], func(t *testing.T) {
 			local := envFixture(t, map[string]string{})

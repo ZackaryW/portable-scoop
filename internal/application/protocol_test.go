@@ -24,6 +24,13 @@ import (
 // The compiled test executable doubles as an isolated Store helper, without Go
 // builds inside a Store or any access to the developer's Scoop installation.
 func TestMain(m *testing.M) {
+	if len(os.Args) == 2 && os.Args[1] == JobProbeOption {
+		if err := WriteJobProbe(os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
+		os.Exit(0)
+	}
 	if os.Getenv("PSPE_CONTROL_TEST") == "1" && len(os.Args) == 3 && os.Args[1] == ControlOption {
 		exe, _ := os.Executable()
 		code, err := ServeControl(context.Background(), os.Args[2], exe, "fixture", Local{Verify: func(environment.Paths) error { return nil }}, Streams{In: os.Stdin, Out: os.Stdout, Err: os.Stderr})
@@ -121,6 +128,7 @@ func TestDirectAndCentralExecutionPreserveContract(t *testing.T) {
 }
 
 func TestCentralDetachedAcknowledgementSurvivesHelpersAndLaterCancel(t *testing.T) {
+	requireDetachedCapability(t)
 	local, _ := executionStore(t)
 	dir := testutil.TempDir(t)
 	t.Setenv("PSPE_CONTROL_TEST", "1")
@@ -265,6 +273,7 @@ func TestDirectStoreRejectsCrossIdentitySelection(t *testing.T) {
 }
 
 func TestDisconnectBeforeCommitCleansPendingApplication(t *testing.T) {
+	requireDetachedCapability(t)
 	local, _ := executionStore(t)
 	dir := testutil.TempDir(t)
 	t.Setenv("PSPE_CONTROL_TEST", "1")

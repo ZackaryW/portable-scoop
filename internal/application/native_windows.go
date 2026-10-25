@@ -47,6 +47,12 @@ func (Native) Start(ctx context.Context, spec Command) (Process, error) {
 			return nil, fmt.Errorf("NUL in application process specification")
 		}
 	}
+	if spec.Mode == Detach {
+		_, err := probeExternalJob(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
 	job, err := windows.CreateJobObject(nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create application job: %w", err)
@@ -86,9 +92,20 @@ func (Native) Start(ctx context.Context, spec Command) (Process, error) {
 		_ = cmd.Wait()
 		return nil, err
 	}
-	handle, err := windows.OpenProcess(windows.PROCESS_SET_QUOTA|windows.PROCESS_TERMINATE|windows.SYNCHRONIZE, false, uint32(cmd.Process.Pid))
+	handle, err := windows.OpenProcess(windows.PROCESS_SET_QUOTA|windows.PROCESS_TERMINATE|windows.PROCESS_QUERY_LIMITED_INFORMATION|windows.SYNCHRONIZE, false, uint32(cmd.Process.Pid))
 	if err != nil {
 		return fail(fmt.Errorf("open application process: %w", err))
+	}
+	if spec.Mode == Detach {
+		inside, err := processHasJob(handle)
+		if err != nil {
+			_ = windows.CloseHandle(handle)
+			return fail(err)
+		}
+		if inside {
+			_ = windows.CloseHandle(handle)
+			return fail(fmt.Errorf("external job membership changed during detached startup; independent lifetime cannot be guaranteed"))
+		}
 	}
 	if err := windows.AssignProcessToJobObject(job, handle); err != nil {
 		windows.CloseHandle(handle)
@@ -104,6 +121,17 @@ func (Native) Start(ctx context.Context, spec Command) (Process, error) {
 		return nil, err
 	}
 	return p, nil
+}
+
+var isProcessInJob = windows.NewLazySystemDLL("kernel32.dll").NewProc("IsProcessInJob")
+
+func processHasJob(handle windows.Handle) (bool, error) {
+	var inside uint32
+	ok, _, err := isProcessInJob.Call(uintptr(handle), 0, uintptr(unsafe.Pointer(&inside)))
+	if ok == 0 {
+		return false, fmt.Errorf("verify external application job membership: %w", err)
+	}
+	return inside != 0, nil
 }
 
 type forwardedOutput struct{ io.Writer }

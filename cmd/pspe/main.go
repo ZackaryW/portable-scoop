@@ -20,6 +20,9 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 	streams := application.Streams{In: os.Stdin, Out: os.Stdout, Err: os.Stderr}
+	if len(os.Args) == 2 && os.Args[1] == application.JobProbeOption {
+		os.Exit(appcli.Report(0, application.WriteJobProbe(os.Stdout), streams))
+	}
 	executable, err := os.Executable()
 	if err != nil {
 		os.Exit(appcli.Report(0, err, streams))
