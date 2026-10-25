@@ -2,6 +2,7 @@
 package cli
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -45,6 +46,13 @@ func NewWithOptions(version string, options Options) *cobra.Command {
 		SilenceUsage:     true,
 		SilenceErrors:    true,
 		TraverseChildren: true,
+		Args: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				return fmt.Errorf("unknown command %q for %s", args[0], cmd.Name())
+			}
+			return nil
+		},
+		RunE: func(cmd *cobra.Command, args []string) error { return cmd.Help() },
 	}
 	root.CompletionOptions.DisableDefaultCmd = true
 	root.AddCommand(newEnvironmentCommand(options))
