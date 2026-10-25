@@ -1,0 +1,24 @@
+{
+  "date": "2026-10-25",
+  "implementation_revision": "574089afb898f619bf1ec9dcd51820f6a1ca9d7a",
+  "development_version": "0.3.1-bitwarden-dev1",
+  "backend_revision": "portable-fields-v1.1",
+  "application": "bitwarden",
+  "application_version": "2026.10.1",
+  "manifest_revision": "6c4f7709ed26a7979bad9e48f73ce549054a45b6",
+  "payload_sha256": "db04fc8ae05b71b5ccd3292cc95c5f47957a19fd0aa74447944333be7a4b7d8c",
+  "passed": true,
+  "installation": true,
+  "detached_startup": true,
+  "persistence_after_reset": true,
+  "host_bitwarden_profile_unchanged": true,
+  "ordinary_scoop_files_unchanged": true,
+  "persistent_path_unchanged": true,
+  "portable_profile_file_count": 58,
+  "limitations": [
+    "No account login or real vault data used",
+    "No synchronization, application auto-update, or relocation qualification",
+    "Compared guest profile/Scoop file fingerprints and persistent PATH; not exhaustive filesystem or registry monitoring"
+  ],
+  "evidence_status": "historical-reverted-prototype"
+}

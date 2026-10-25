@@ -1,0 +1,27 @@
+# Portscoop documentation
+
+## Use Portscoop
+
+| Guide | What it covers |
+| --- | --- |
+| [Internet installation](internet-install.md) | PowerShell bootstrap, current-folder defaults, Host/Store selection, scripted setup |
+| [Setup and multiple Stores](setup.md) | Prerequisites, first default Store, independent environments, matching distributions |
+| [Environment registrations](environments.md) | Aliases, identity, selection, and location hints |
+| [Application execution](application-execution.md) | `pspe`, argument forwarding, detached and terminal modes |
+| [Self-update](self-update.md) | Installation-local runtime updates and compatibility limits |
+| [Relocation](relocation.md) | Moving a Store, managed paths, and recovery |
+| [Manifest coverage](manifest-coverage.md) | Measured preflight acceptance, pinned snapshots, accepted names |
+
+## Understand the implementation
+
+| Guide | What it covers |
+| --- | --- |
+| [Architecture](architecture.md) | Host delegation, Store ownership, repository components |
+| [Manifest compatibility](compatibility.md) | Per-field use/rewrite/skip/reject decisions and reviewed hook operations |
+| [Portable policy](portable-policy.md) | Supported commands, dependency preflight, isolation boundaries |
+| [Backend compatibility](backend-compatibility.md) | Pinned Scoop adapter, patched behavior, verification |
+| [Process execution](process-execution.md) | Streams, exit codes, cancellation, and process lifetime |
+| [Bitwarden qualification](bitwarden-qualification.md) | Real install/startup observations and their limits |
+| [Development](development.md) | Build, test, package, and change tracking |
+
+The [main specifications](../openspec/specs/) describe synchronized behavior contracts. Active changes under `openspec/changes/` may describe newer behavior pending synchronization; release availability and test evidence are documented separately.
