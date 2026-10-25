@@ -139,7 +139,7 @@ if($settings.create_default_store){$parameters.CreateDefaultStore=$true}
     }
     Write-Host "Portscoop $Mode is ready at $Destination" -ForegroundColor Green
     if($Mode-eq'Host'){
-        if($CreateDefaultStore){Write-Host 'The first default Store is configured; any existing default selection was preserved.'}elseif($supportsBootstrap){Write-Host 'Later: run psp env bootstrap to create a first default Store in the store subfolder.'}else{Write-Host 'Next: create/register a store and choose its default with env init/register/default.'}
+        if($CreateDefaultStore){Write-Host 'Default Store setup completed. Existing Store registrations were preserved.'}elseif($supportsBootstrap){Write-Host 'Later: run psp env bootstrap to create a first default Store in the store subfolder.'}else{Write-Host 'Next: create/register a store and choose its default with env init/register/default.'}
         Write-Host ('Run: & "'+$exe+'" env list')
     }else{
         Write-Host ('Run: & "'+$exe+'" list')

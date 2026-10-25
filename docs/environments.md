@@ -50,6 +50,13 @@ This removes the alias and, when it was the last alias for the default identity,
 clears that default. Every portable file remains in place. Register/default/list/
 unregister do not run Scoop, edit package state, or add portable shims to PATH.
 
+An explicit `env bootstrap` request (including first-Store setup) keeps a reachable
+default with the registered identity. If all saved locations for that default are
+missing, it creates and selects the Host's `store` child instead, retaining the old
+registrations for reconnection. If necessary, the new alias is `default-2`,
+`default-3`, and so on. Invalid metadata, a mismatched identity, or another inspection
+error fails setup rather than reporting success or replacing that selection.
+
 Implementation tests inject temporary registry paths through the CLI's options
 contract. Tests never select the developer's real host registry or Scoop root.
 

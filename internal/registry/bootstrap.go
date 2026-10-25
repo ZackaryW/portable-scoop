@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 
 	"portscoop/internal/environment"
 )
@@ -20,10 +21,38 @@ func (m Manager) Bootstrap(ctx context.Context, root string, initialize func(con
 	initialized := false
 	err := m.Store.Update(ctx, func(d *Document) error {
 		if d.DefaultID != "" {
-			return errDefaultConfigured
+			var inspectionErr error
+			for _, entry := range d.Entries {
+				if entry.ID != d.DefaultID {
+					continue
+				}
+				id, _, err := environment.Load(m.filesystem(), entry.Path)
+				if err == nil && id.ID == d.DefaultID {
+					return errDefaultConfigured
+				}
+				if err == nil {
+					inspectionErr = fmt.Errorf("default Store identity does not match its registration at %s", entry.Path)
+				} else if !errors.Is(err, os.ErrNotExist) {
+					inspectionErr = err
+				}
+			}
+			if inspectionErr != nil {
+				return fmt.Errorf("cannot inspect the existing default Store; setup did not create or select a new Store: %w", inspectionErr)
+			}
 		}
-		if _, exists := d.Entries["default"]; exists {
-			return fmt.Errorf("alias default is already registered; choose its default explicitly or unregister it first")
+		alias := "default"
+		if previous, exists := d.Entries[alias]; exists {
+			if d.DefaultID == "" || previous.ID != d.DefaultID {
+				return fmt.Errorf("alias default is already registered; choose its default explicitly or unregister it first")
+			}
+			// The requested bootstrap replaces a missing default selection, not
+			// its registration. Keep its alias available for later reconnection.
+			for suffix := 2; ; suffix++ {
+				alias = fmt.Sprintf("default-%d", suffix)
+				if _, exists := d.Entries[alias]; !exists {
+					break
+				}
+			}
 		}
 		id, err := initialize(ctx, root, "Default")
 		if err != nil {
@@ -41,7 +70,7 @@ func (m Manager) Bootstrap(ctx context.Context, root string, initialize func(con
 		if err != nil {
 			return err
 		}
-		d.Entries["default"] = entry
+		d.Entries[alias] = entry
 		d.DefaultID = id.ID
 		return nil
 	})
