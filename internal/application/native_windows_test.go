@@ -54,6 +54,10 @@ func TestApplicationProcessFixture(t *testing.T) {
 		result := "accepted"
 		if err != nil {
 			result = err.Error()
+			var external *ExternalJobError
+			if !errors.As(err, &external) {
+				result = "unclassified: " + result
+			}
 		} else {
 			if err := p.Commit(context.Background()); err != nil {
 				result = err.Error()
@@ -345,6 +349,15 @@ func requireDetachedCapability(t *testing.T) {
 }
 
 func TestDetachedRejectsResidualRestrictiveAncestorBeforeUserCode(t *testing.T) {
+	assertDetachedRejectsRestrictiveJob(t, "nested-restrictive-owner")
+}
+
+func TestDetachedRejectsNonBreakawayJobBeforeUserCode(t *testing.T) {
+	assertDetachedRejectsRestrictiveJob(t, "restrictive-owner")
+}
+
+func assertDetachedRejectsRestrictiveJob(t *testing.T, mode string) {
+	t.Helper()
 	dir := testutil.TempDir(t)
 	exe, _ := os.Executable()
 	job, err := windows.CreateJobObject(nil, nil)
@@ -358,7 +371,7 @@ func TestDetachedRejectsResidualRestrictiveAncestorBeforeUserCode(t *testing.T) 
 	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, exe, "-test.run=^TestApplicationProcessFixture$")
-	cmd.Env = appFixtureEnv("nested-restrictive-owner", dir)
+	cmd.Env = appFixtureEnv(mode, dir)
 	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: windows.CREATE_SUSPENDED, HideWindow: true}
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
@@ -382,7 +395,7 @@ func TestDetachedRejectsResidualRestrictiveAncestorBeforeUserCode(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(data), "external job") {
+	if !strings.HasPrefix(string(data), "external job") {
 		t.Fatalf("unsafe detached acknowledgement under restrictive ancestor: %s", data)
 	}
 	if _, err := os.Stat(filepath.Join(dir, "survivor.pid")); !os.IsNotExist(err) {

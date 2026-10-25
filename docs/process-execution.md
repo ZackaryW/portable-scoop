@@ -75,12 +75,21 @@ occurred, the diagnostic states that the app may be running; no automatic retry
 is attempted. A missing `pspe.exe` or incompatible execution handshake requests a
 compatible Store update without changing package-management availability.
 
-Detached creation first runs a bounded metadata-only helper with the same Windows
-breakaway policy. It inspects the actual remaining external job before Portscoop
+Detached creation first checks the current external job's breakaway limits. A job
+permitting neither explicit nor silent breakaway returns an external-job diagnostic
+before Windows can refuse helper creation with an ambiguous access-denied error.
+Otherwise, a bounded metadata-only helper uses the same Windows breakaway policy.
+It inspects the actual remaining external job before Portscoop
 adds any startup job. Residual membership is rejected: even a job without an
 immediate kill-on-close flag can conceal an owning ancestor, and independence
 cannot be verified. The helper accepts no app command. Creation then rechecks
 membership while the app is still suspended, before assigning its temporary
 startup job. Portscoop never weakens an external job's limits. This handles the
 Windows rule that breakaway may stop at an ancestor which forbids further breakaway.
+
+Restricted test hosts, including hosted CI runners, can prohibit detached lifetime.
+Detached-success tests skip only the classified external-job restriction; other
+probe failures remain test failures. Separate restrictive-job regressions still
+verify rejection before application code runs. Successful independent lifetime
+requires qualification outside an owning external job.
 

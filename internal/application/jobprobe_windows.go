@@ -27,26 +27,34 @@ type JobMembership struct {
 type ExternalJobError struct{ Flags uint32 }
 
 func (e *ExternalJobError) Error() string {
-	return fmt.Sprintf("external job remains after breakaway; independent detached lifetime cannot be verified (limits=0x%x)", e.Flags)
+	return fmt.Sprintf("external job prevents verified independent detached lifetime (limits=0x%x)", e.Flags)
 }
 
 // WriteJobProbe runs before assigning the helper to any Portscoop startup job.
 // Querying NULL here sees the actual external job left after Windows breakaway,
 // which the creating process cannot query by an unnamed child's job handle.
 func WriteJobProbe(out io.Writer) error {
-	inside, err := processHasJob(windows.CurrentProcess())
+	info, err := currentJobMembership()
 	if err != nil {
 		return err
+	}
+	return json.NewEncoder(out).Encode(info)
+}
+
+func currentJobMembership() (JobMembership, error) {
+	inside, err := processHasJob(windows.CurrentProcess())
+	if err != nil {
+		return JobMembership{}, err
 	}
 	info := JobMembership{InJob: inside}
 	if inside {
 		var limits windows.JOBOBJECT_EXTENDED_LIMIT_INFORMATION
 		if err := windows.QueryInformationJobObject(0, windows.JobObjectExtendedLimitInformation, uintptr(unsafe.Pointer(&limits)), uint32(unsafe.Sizeof(limits)), nil); err != nil {
-			return fmt.Errorf("inspect external job limits: %w", err)
+			return info, fmt.Errorf("inspect external job limits: %w", err)
 		}
 		info.LimitFlags = limits.BasicLimitInformation.LimitFlags
 	}
-	return json.NewEncoder(out).Encode(info)
+	return info, nil
 }
 
 type boundedProbe struct{ data []byte }
@@ -60,6 +68,19 @@ func (b *boundedProbe) Write(data []byte) (int, error) {
 }
 
 func probeExternalJob(ctx context.Context) (JobMembership, error) {
+	if err := ctx.Err(); err != nil {
+		return JobMembership{}, err
+	}
+	current, err := currentJobMembership()
+	if err != nil {
+		return current, err
+	}
+	// Windows refuses CREATE_BREAKAWAY_FROM_JOB when the immediate job permits
+	// neither explicit nor silent breakaway. Classify that known restriction
+	// before CreateProcess reports an otherwise ambiguous access-denied error.
+	if current.InJob && current.LimitFlags&(windows.JOB_OBJECT_LIMIT_BREAKAWAY_OK|windows.JOB_OBJECT_LIMIT_SILENT_BREAKAWAY_OK) == 0 {
+		return current, &ExternalJobError{Flags: current.LimitFlags}
+	}
 	self, err := os.Executable()
 	if err != nil {
 		return JobMembership{}, err
