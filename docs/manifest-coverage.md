@@ -1,5 +1,16 @@
 # Manifest coverage
 
+## Generic hook checkpoint (2026-10-25)
+
+Ordered generic pre/post-install operations reach **2,150 / 4,148 (51.8%)** full
+install-preflight acceptance: Main 1,113 / 1,700; Extras 1,037 / 2,448. This adds
+78 entries over frozen downloads. [Pinned audit](evidence/manifest-coverage-hooks-2026-10-25.json).
+[Separate VMware evidence](evidence/generic-hooks-2026-10-25.json) records successful
+Bitwarden 2026.10.1 and SpaceSniffer 2.2.0.27 installation, reset/persistence and
+root-scoped detached launch, plus unrelated synthetic mixed-phase and all-skip
+packages. Measured guest host-profile, ordinary Scoop files and persistent PATH
+sentinels stayed unchanged. This does not establish portability for every accepted app.
+
 ## Download checkpoint (2026-10-25)
 
 Frozen naming and inert EXE retention raise full install-preflight acceptance to

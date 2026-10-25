@@ -1,0 +1,53 @@
+{
+  "passed": true,
+  "kind": "generic-hook-integration",
+  "apps": [
+    {
+      "version": "2026.10.1",
+      "name": "bitwarden",
+      "install": true,
+      "launch": true,
+      "processes": [
+        {
+          "ProcessId": 8888,
+          "ExecutablePath": "C:\\Users\\Public\\Portscoop-Generic-Hooks-20261025\\store\\scoop\\apps\\bitwarden\\2026.10.1\\Bitwarden.exe"
+        },
+        {
+          "ProcessId": 1648,
+          "ExecutablePath": "C:\\Users\\Public\\Portscoop-Generic-Hooks-20261025\\store\\scoop\\tmp\\3L3uoyEhmTiDh6bStHlAtHTyMPw\\Bitwarden.exe"
+        },
+        {
+          "ProcessId": 2248,
+          "ExecutablePath": "C:\\Users\\Public\\Portscoop-Generic-Hooks-20261025\\store\\scoop\\tmp\\3L3uoyEhmTiDh6bStHlAtHTyMPw\\Bitwarden.exe"
+        },
+        {
+          "ProcessId": 2448,
+          "ExecutablePath": "C:\\Users\\Public\\Portscoop-Generic-Hooks-20261025\\store\\scoop\\tmp\\3L3uoyEhmTiDh6bStHlAtHTyMPw\\Bitwarden.exe"
+        }
+      ],
+      "reset_preserved": true
+    },
+    {
+      "version": "2.2.0.27",
+      "name": "spacesniffer",
+      "install": true,
+      "launch": true,
+      "processes": [
+        {
+          "ProcessId": 3328,
+          "ExecutablePath": "C:\\Users\\Public\\Portscoop-Generic-Hooks-20261025\\store\\scoop\\apps\\spacesniffer\\2.2.0.27\\SpaceSniffer.exe"
+        }
+      ],
+      "reset_preserved": true
+    }
+  ],
+  "error": null,
+  "synthetic": true,
+  "hostProfileUnchanged": true,
+  "ordinaryScoopUnchanged": true,
+  "persistentPathUnchanged": true,
+  "source_revision": "f5af61d15cbe63ea3ab895f479ab2ed036e7c1f5",
+  "release_version": "0.3.1-operations-dev2",
+  "release_sha256": "84ca8dee5e868eb8dc79ccd271c0e399427465d9c66f166c31384bd2e37aceda",
+  "bucket_revision": "6c4f7709ed26a7979bad9e48f73ce549054a45b6"
+}
