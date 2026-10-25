@@ -11,6 +11,7 @@
 | [Self-update](self-update.md) | Installation-local runtime updates and compatibility limits |
 | [Relocation](relocation.md) | Moving a Store, managed paths, and recovery |
 | [Manifest coverage](manifest-coverage.md) | Measured preflight acceptance, pinned snapshots, accepted names |
+| [v0.3.1 release notes](releases/0.3.1.md) | Compatibility expansion and the fresh-Store requirement |
 
 ## Understand the implementation
 
