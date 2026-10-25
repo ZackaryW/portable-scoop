@@ -43,6 +43,8 @@ try {
     Assert ([Environment]::GetEnvironmentVariable('PATH','User')-ceq$expectedUserPath) 'Host modified more than its requested user PATH entry'
     $listing=psp env list|Out-String
     Assert ($LASTEXITCODE-eq 0-and$listing-match'ALIAS') 'Bare psp env list failed after Host setup'
+    pspe --version | Out-Null
+    Assert ($LASTEXITCODE-eq 0) 'Bare pspe version failed after Host PATH setup'
     $status.checks+='Host setup, exact user PATH addition, and immediate bare psp env list'
 
     $work=Join-Path $root 'Stores\Work (portable)'
@@ -52,6 +54,11 @@ try {
     Assert (-not(Test-Path -LiteralPath (Join-Path $env:LOCALAPPDATA 'portscoop\registry.json'))) 'Store registered implicitly'
     & $entry -Mode Store -Destination $personal -Name Personal -RegisterAs personal -SetDefault -NonInteractive
     Assert ($env:PATH-ceq$pathAfterHost) 'Store modified caller PATH'
+    foreach($deployment in @($hostRoot,$work,$personal)){
+        foreach($name in @('portscoop.exe','psp.exe','pspe.exe')){Assert (Test-Path -LiteralPath (Join-Path $deployment $name)) ('Missing deployment launcher: '+$name)}
+        & (Join-Path $deployment 'pspe.exe') --help | Out-Null
+        Assert ($LASTEXITCODE-eq 0) 'Execution help failed in deployment'
+    }
     $workIdentity=Get-Content -LiteralPath (Join-Path $work '.portscoop\environment.json') -Raw|ConvertFrom-Json
     $personalIdentity=Get-Content -LiteralPath (Join-Path $personal '.portscoop\environment.json') -Raw|ConvertFrom-Json
     Assert ($workIdentity.id-ne$personalIdentity.id) 'Independent stores share an identity'

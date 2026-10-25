@@ -49,6 +49,7 @@ try {
     $registryPath=Join-Path $profile 'portscoop\registry.json'
     $registry=Get-Content -LiteralPath $registryPath -Raw|ConvertFrom-Json
     Assert ($registry.default_id-eq$identity.id-and$registry.entries.default.id-eq$identity.id-and$registry.entries.default.path-ieq$store) 'First Store was not registered and selected'
+    foreach($deployment in @($hostRoot,$store)){Assert (Test-Path -LiteralPath (Join-Path $deployment 'pspe.exe')) 'Host/default Store is missing execution launcher'}
     Assert-EmptyStore $exe @('list')
     Assert-EmptyStore (Join-Path $store 'psp.exe') @('list')
     Assert ($env:PATH-ceq$originalPath) 'Host No PATH choice was ignored'
@@ -61,6 +62,7 @@ try {
     $second=Join-Path $root 'Second Store'
     & $exe env init $second --name Second
     Assert ($LASTEXITCODE-eq 0) 'Nested default Store blocked future initialization'
+    Assert (Test-Path -LiteralPath (Join-Path $second 'pspe.exe')) 'Subsequent Store is missing execution launcher'
     Assert ([IO.File]::ReadAllText((Join-Path $store 'user-data.txt'))-ceq'preserve') 'Future initialization changed first Store data'
     Assert (-not(Test-Path -LiteralPath (Join-Path $second 'store'))) 'Nested Store was copied into another environment'
     $status.checks+='Repeated bootstrap preserves selection; mutable default Store does not block creation of additional independent Stores'

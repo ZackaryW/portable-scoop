@@ -96,3 +96,43 @@ creates a compatible local `fixture/tool` ZIP package and dependency, then insta
 lists, updates, resets, cleans, relocates, and uninstalls it across two roots.
 The fixture server, generated manifests, and logs remain in its guest test folder
 for inspection; it is not a script to run against a normal user's environment.
+# Adding execution support to an existing Store
+
+New releases contain three launchers: identical management executables
+`portscoop.exe`/`psp.exe`, and the separate `pspe.exe` execution executable. New
+Host, standalone Store, and Host-created default Store deployments receive all
+three. Only an explicitly requested Host directory is added to user PATH;
+individual Store shim directories are not added.
+
+An older Store lacking `pspe.exe` continues to support its compatible management
+protocol. New Host `pspe` reports the missing execution support and does not
+silently update it or fall back to another application location.
+
+For a compatible Store launcher update:
+
+1. Extract a new verified release into a separate empty folder and run its
+   `portscoop.exe __portscoop_verify_release` command. Compare the Store's
+   `.portscoop/backend/backend.json` revisions with that release's
+   `backend/backend.json`. This release requires matching upstream and patch
+   revisions; it does not migrate a different engine patch.
+2. Close Store application sessions and wait for package operations to finish.
+   Back up the installed management executables and any existing `pspe.exe`
+   outside the Store's shim/engine directories.
+3. Copy the verified release's three executable files beside the Store's existing
+   launchers. Keep `.portscoop/environment.json`, `.portscoop/state`, backend
+   metadata, `scoop`, packages, persistence, and Host registry entries intact.
+   Never copy another Store's identity or initialize over an existing Store.
+4. Check the three launcher versions, run `psp list`, and exercise a qualified
+   installed shim with `pspe`. Registry/default selection and the UUID stay intact.
+
+To roll back, restore the backed-up compatible management executables and prior
+execution executable. If none existed, remove only the newly added `pspe.exe`.
+Do not delete portable data. A new Host then reports missing execution support
+while compatible management operations continue to work.
+
+For a Host update, deploy the complete verified release to another empty folder
+and select its launcher path. Host registry data remains separate; retain any
+existing `store` directory and its registration. Replacing only Host binaries
+without matching `release.json` would invalidate its source payload for future
+Store initialization.
+

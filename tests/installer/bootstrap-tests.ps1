@@ -20,7 +20,7 @@ $receipt=@{mode=$Mode;destination=$Destination;name=$Name;add_to_path=[bool]$Add
 [IO.File]::WriteAllText($env:PORTSCOOP_TEST_RECEIPT,($receipt|ConvertTo-Json),(New-Object Text.UTF8Encoding($false)))
 '@
 [IO.File]::WriteAllText((Join-Path $payload 'setup.ps1'),$stub)
-foreach($file in @('portscoop.exe','psp.exe','release.json','backend\backend.json')){[IO.File]::WriteAllText((Join-Path $payload $file),'fixture')}
+foreach($file in @('portscoop.exe','psp.exe','pspe.exe','release.json','backend\backend.json')){[IO.File]::WriteAllText((Join-Path $payload $file),'fixture')}
 $archive=Join-Path $root 'fixture.zip'
 Compress-Archive -Path "$payload\*" -DestinationPath $archive
 $global:PortscoopInstallerTest=@{archive=$archive;checksum=$null;calls=(New-Object 'Collections.Generic.List[string]');fail=$false;answers=(New-Object 'Collections.Generic.Queue[string]');prompts=(New-Object 'Collections.Generic.List[string]')}
@@ -185,6 +185,17 @@ try {
     Assert (-not(Test-Path -LiteralPath $legacyTarget)) 'Unsupported release created a Host destination'
     $global:PortscoopInstallerTest.archive=$archive
     $passed.Add('older releases fail clearly before deployment when first Store bootstrap is requested')
+
+    $missingExecution=Join-Path $root 'missing-execution.zip'
+    Copy-Item -LiteralPath $archive -Destination $missingExecution
+    $zip=[IO.Compression.ZipFile]::Open($missingExecution,[IO.Compression.ZipArchiveMode]::Update)
+    try{@($zip.Entries|Where-Object {$_.FullName.Replace('\','/')-eq'pspe.exe'})[0].Delete()}finally{$zip.Dispose()}
+    $global:PortscoopInstallerTest.archive=$missingExecution
+    $missingTarget=Join-Path $root 'missing execution target'
+    Expect-Failure {& $entry -Mode Store -Destination $missingTarget -NonInteractive} 'pspe.exe'
+    Assert (-not(Test-Path -LiteralPath $missingTarget)) 'Incomplete execution payload published a deployment'
+    $global:PortscoopInstallerTest.archive=$archive
+    $passed.Add('missing pspe execution artifact is rejected before deployment')
 
     Expect-Failure {& $worker -Mode Store -Destination (Join-Path $root 'invalid options') -AddToPath -NonInteractive} 'does not add'
     Expect-Failure {& $worker -Mode Host -Destination (Join-Path $root 'invalid options') -RegisterAs work -NonInteractive} 'only to Store'

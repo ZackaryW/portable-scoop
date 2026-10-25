@@ -11,7 +11,7 @@ $assets=Join-Path $dist ('release-assets\'+$Version)
 if ((Test-Path -LiteralPath $stage) -or (Test-Path -LiteralPath $archive) -or (Test-Path -LiteralPath $assets)) { throw 'Release output already exists; choose a new version' }
 New-Item -ItemType Directory -Path $stage | Out-Null
 & (Join-Path $PSScriptRoot 'build.ps1') -Version $Version
-Copy-Item -LiteralPath (Join-Path $projectRoot 'bin\portscoop.exe'),(Join-Path $projectRoot 'bin\psp.exe') -Destination $stage
+Copy-Item -LiteralPath (Join-Path $projectRoot 'bin\portscoop.exe'),(Join-Path $projectRoot 'bin\psp.exe'),(Join-Path $projectRoot 'bin\pspe.exe') -Destination $stage
 $null=& (Join-Path $PSScriptRoot 'prepare-backend.ps1') -Destination (Join-Path $stage 'backend')
 Copy-Item -LiteralPath (Join-Path $projectRoot 'README.md'),(Join-Path $projectRoot 'LICENSE'),(Join-Path $PSScriptRoot 'setup.ps1') -Destination $stage
 Copy-Item -LiteralPath (Join-Path $projectRoot 'get.ps1') -Destination $stage

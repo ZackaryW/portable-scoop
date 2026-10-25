@@ -104,3 +104,10 @@ The completed proposal, design, delta specifications, and implementation tasks
 are preserved in [the archived change](openspec/changes/archive/2026-10-25-add-portable-scoop-environments/).
 Tests use temporary roots and explicit injected dependencies. They must never
 discover or modify a developer's real Scoop installation.
+# Launch applications
+
+Use `pspe editor` for detached launch, `pspe rg -n hello .` for terminal execution,
+or explicit `--wait`/`--detach` before the shim name. Select a registered Store
+with `pspe --env work tool --help`. See [execution usage and handler scope](docs/application-execution.md)
+and [compatible Store updates](docs/setup.md).
+

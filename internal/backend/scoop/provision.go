@@ -47,7 +47,7 @@ func verifyRelease(root string, allowDefaultStore bool) (Release, error) {
 	if release.SchemaVersion != 1 || release.PatchRevision != PatchRevision {
 		return release, fmt.Errorf("incompatible release payload")
 	}
-	for _, required := range []string{"portscoop.exe", "psp.exe", "backend/backend.json", "backend/adapter/entry.ps1", "backend/engine/bin/scoop.ps1"} {
+	for _, required := range []string{"portscoop.exe", "psp.exe", "pspe.exe", "backend/backend.json", "backend/adapter/entry.ps1", "backend/engine/bin/scoop.ps1"} {
 		if release.Artifacts[required] == "" {
 			return release, fmt.Errorf("release missing %s", required)
 		}
@@ -200,7 +200,7 @@ func (i Initializer) Init(ctx context.Context, root, name string) (environment.I
 	if err = copyTree(filepath.Join(releaseRoot, "backend", "adapter"), filepath.Dir(paths.Adapter)); err != nil {
 		return id, err
 	}
-	for _, pair := range [][2]string{{filepath.Join(releaseRoot, "backend", "backend.json"), filepath.Join(stage, MetadataRelative)}, {filepath.Join(releaseRoot, "portscoop.exe"), filepath.Join(stage, "portscoop.exe")}, {filepath.Join(releaseRoot, "psp.exe"), filepath.Join(stage, "psp.exe")}} {
+	for _, pair := range [][2]string{{filepath.Join(releaseRoot, "backend", "backend.json"), filepath.Join(stage, MetadataRelative)}, {filepath.Join(releaseRoot, "portscoop.exe"), filepath.Join(stage, "portscoop.exe")}, {filepath.Join(releaseRoot, "psp.exe"), filepath.Join(stage, "psp.exe")}, {filepath.Join(releaseRoot, "pspe.exe"), filepath.Join(stage, "pspe.exe")}} {
 		data, err := os.ReadFile(pair[0])
 		if err != nil {
 			return id, err
@@ -208,6 +208,9 @@ func (i Initializer) Init(ctx context.Context, root, name string) (environment.I
 		if err = os.WriteFile(pair[1], data, 0600); err != nil {
 			return id, err
 		}
+	}
+	if err = verifyLaunchers(stage, release); err != nil {
+		return id, err
 	}
 	if err = os.WriteFile(paths.Config, []byte("{}\n"), 0600); err != nil {
 		return id, err
@@ -231,11 +234,14 @@ func (i Initializer) Init(ctx context.Context, root, name string) (environment.I
 		}
 	}
 	if !preexisting {
-		for _, launcher := range []string{"portscoop.exe", "psp.exe"} {
+		for _, launcher := range []string{"portscoop.exe", "psp.exe", "pspe.exe"} {
 			if err = os.Rename(filepath.Join(stage, launcher), filepath.Join(root, launcher)); err != nil {
 				return id, err
 			}
 		}
+	}
+	if err = verifyLaunchers(root, release); err != nil {
+		return id, err
 	}
 	finalPaths, _ := environment.PathsAt(root)
 	if err = (relocation.Manager{}).Capture(finalPaths); err != nil {
@@ -262,4 +268,18 @@ func (i Initializer) Init(ctx context.Context, root, name string) (environment.I
 		return id, err
 	}
 	return id, nil
+}
+
+func verifyLaunchers(root string, release Release) error {
+	for _, name := range []string{"portscoop.exe", "psp.exe", "pspe.exe"} {
+		data, err := containedFile(root, filepath.Join(root, name))
+		if err != nil {
+			return err
+		}
+		hash := sha256.Sum256(data)
+		if !strings.EqualFold(hex.EncodeToString(hash[:]), release.Artifacts[name]) {
+			return fmt.Errorf("copied release launcher changed: %s", name)
+		}
+	}
+	return nil
 }

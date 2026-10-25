@@ -17,6 +17,8 @@ try {
     & go build -trimpath -ldflags "-X main.version=$Version" -o (Join-Path $outputDirectory 'portscoop.exe') ./cmd/portscoop
     if ($LASTEXITCODE -ne 0) { throw 'Go build failed' }
     Copy-Item -LiteralPath (Join-Path $outputDirectory 'portscoop.exe') -Destination (Join-Path $outputDirectory 'psp.exe') -Force
+    & go build -trimpath -ldflags "-X main.version=$Version" -o (Join-Path $outputDirectory 'pspe.exe') ./cmd/pspe
+    if ($LASTEXITCODE -ne 0) { throw 'Execution launcher build failed' }
 } finally {
     Set-Location -LiteralPath $previousLocation.Path
     $env:GOOS = $previousGOOS

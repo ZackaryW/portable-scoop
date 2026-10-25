@@ -35,9 +35,10 @@ func releaseFixture(t *testing.T) string {
 		t.Fatal(err)
 	}
 	fixtureFile(t, filepath.Join(release, "backend", "backend.json"), data)
-	for _, name := range []string{"portscoop.exe", "psp.exe"} {
+	for _, name := range []string{"portscoop.exe", "psp.exe", "pspe.exe"} {
 		fixtureFile(t, filepath.Join(release, name), []byte("fixture launcher"))
 	}
+	fixtureFile(t, filepath.Join(release, "pspe.exe"), []byte("separate execution launcher"))
 	metadata := Release{SchemaVersion: 1, PatchRevision: PatchRevision, Artifacts: map[string]string{}}
 	if err := filepath.WalkDir(release, func(path string, entry os.DirEntry, err error) error {
 		if err != nil {
@@ -88,15 +89,51 @@ func TestInitializationPublishesUniqueReadyRootsAndPrivateLayout(t *testing.T) {
 				t.Fatalf("private directory unavailable: %s %v", directory, err)
 			}
 		}
-		for _, launcher := range []string{"portscoop.exe", "psp.exe"} {
+		for _, launcher := range []string{"portscoop.exe", "psp.exe", "pspe.exe"} {
 			data, _ := os.ReadFile(filepath.Join(root, launcher))
-			if string(data) != "fixture launcher" {
+			expected, _ := os.ReadFile(filepath.Join(release, launcher))
+			if string(data) != string(expected) {
 				t.Fatal("local launcher missing")
 			}
 		}
 		if _, err := initializer.Init(context.Background(), root, name); err == nil {
 			t.Fatal("initialized root was replaced")
 		}
+	}
+}
+
+func TestReleaseRequiresVerifiedExecutionArtifact(t *testing.T) {
+	for _, kind := range []string{"missing", "altered", "unrecorded"} {
+		t.Run(kind, func(t *testing.T) {
+			release := releaseFixture(t)
+			switch kind {
+			case "missing":
+				if err := os.Remove(filepath.Join(release, "pspe.exe")); err != nil {
+					t.Fatal(err)
+				}
+			case "altered":
+				fixtureFile(t, filepath.Join(release, "pspe.exe"), []byte("altered"))
+			case "unrecorded":
+				data, _ := os.ReadFile(filepath.Join(release, "release.json"))
+				var r Release
+				if err := json.Unmarshal(data, &r); err != nil {
+					t.Fatal(err)
+				}
+				delete(r.Artifacts, "pspe.exe")
+				data, _ = json.Marshal(r)
+				fixtureFile(t, filepath.Join(release, "release.json"), data)
+			}
+			if _, err := VerifyRelease(release); err == nil {
+				t.Fatal("incomplete execution release accepted")
+			}
+			root := filepath.Join(testutil.TempDir(t), "store")
+			if _, err := (Initializer{ReleaseRoot: release}).Init(context.Background(), root, "blocked"); err == nil {
+				t.Fatal("invalid execution release published a Store")
+			}
+			if _, err := os.Stat(filepath.Join(root, environment.MarkerRelative)); !os.IsNotExist(err) {
+				t.Fatal("ready marker published", err)
+			}
+		})
 	}
 }
 

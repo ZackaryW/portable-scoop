@@ -101,7 +101,7 @@ try {
     }finally{$zip.Dispose()}
     $payload=Join-Path $temporary 'payload'
     Expand-Archive -LiteralPath $archive -DestinationPath $payload
-    foreach($required in @('setup.ps1','release.json','portscoop.exe','psp.exe','backend\backend.json')){
+    foreach($required in @('setup.ps1','release.json','portscoop.exe','psp.exe','pspe.exe','backend\backend.json')){
         if(-not(Test-Path -LiteralPath (Join-Path $payload $required) -PathType Leaf)){throw "Release payload is missing $required"}
     }
     $supportsBootstrap=(Get-Command (Join-Path $payload 'setup.ps1')).Parameters.ContainsKey('CreateDefaultStore')
