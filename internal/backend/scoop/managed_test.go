@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -40,7 +41,7 @@ func TestManagedFreezesPortableActionsAndReportsDecisions(t *testing.T) {
 		t.Fatal(err)
 	}
 	item := frozen["tool"]
-	if len(item.Actions) != 1 || item.Actions[0] != (compatibility.Action{Phase: "pre_install", Kind: "ensure-persisted-file", Path: "config.xml", PersistPath: "config.xml"}) || item.Manifest["shortcuts"] != nil || !strings.Contains(string(item.Manifest["bin"]), "My-Tool") {
+	if len(item.Actions) != 1 || !reflect.DeepEqual(item.Actions[0], (compatibility.Action{Phase: "pre_install", Kind: "ensure-persisted-file", Path: "config.xml", PersistPath: "config.xml"})) || item.Manifest["shortcuts"] != nil || !strings.Contains(string(item.Manifest["bin"]), "My-Tool") {
 		t.Fatalf("bad frozen plan: %+v", item)
 	}
 	if !strings.Contains(notices.String(), "pre_install rewrite") || !strings.Contains(notices.String(), "shortcuts rewrite") {
@@ -66,7 +67,7 @@ func managedFixture(t *testing.T) environment.Context {
 	marker, _ := json.Marshal(id)
 	fixtureFile(t, filepath.Join(root, environment.MarkerRelative), marker)
 	metadata := environment.BackendMetadata{SchemaVersion: 1, ProtocolMajor: 1, UpstreamRevision: UpstreamRevision, PatchRevision: PatchRevision, Artifacts: map[string]string{}}
-	for _, path := range []string{environment.EngineEntryRelative, environment.AdapterRelative, ".portscoop/backend/request-reader.ps1", "scoop/apps/scoop/current/lib/system.ps1", "scoop/apps/scoop/current/lib/manifest.ps1"} {
+	for _, path := range []string{environment.EngineEntryRelative, environment.AdapterRelative, ".portscoop/backend/request-reader.ps1", "scoop/apps/scoop/current/lib/system.ps1", "scoop/apps/scoop/current/lib/manifest.ps1", "scoop/apps/scoop/current/lib/portscoop-filesystem.ps1", "scoop/apps/scoop/current/lib/portscoop-tree-actions.ps1"} {
 		data := []byte("fixture " + path)
 		fixtureFile(t, filepath.Join(root, path), data)
 		hash := sha256.Sum256(data)

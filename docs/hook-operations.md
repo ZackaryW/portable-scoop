@@ -25,8 +25,8 @@ Each new operation belongs in its own unit with operand/condition checks, typed 
 Separate units recognize single-file `Copy-Item` from a literal `$dir` path,
 `New-Item -ItemType Directory` or `ensure` for directories, and `Set-Content` or
 `New-Item -ItemType File -Value` for quoted literal content. Each may stand alone
-or inside one matching negated `Test-Path` guard. File-copy wildcards, recursive
-copies and command substitutions remain outside this bounded grammar. Host
+or inside one matching negated `Test-Path` guard. Command substitutions remain
+outside this bounded grammar. Host
 copies are handled only by the optional-import unit.
 
 Missing-path guards must name the destination under `$dir`, or its declared
@@ -65,3 +65,21 @@ Limits are 64 KiB of source, nesting depth 32, 256 collection elements, 4096
 expanded actions, and 1 MiB of expanded literal data. An additional 16,384-node
 work bound limits non-action expansion. One invalid iteration rejects every
 action; diagnostics retain its source line and iteration number.
+
+## Resource copy and cleanup
+
+`Copy-Item` with explicit `-Force -Recurse` accepts checked package-directory
+contents and a package destination or exact persistence mapping. It refreshes
+colliding files and keeps unrelated resources. This differs from guarded default
+files, which preserve existing settings. Post-install writes require the expected
+`current` and persistence junctions; arbitrary links reject.
+
+`Remove-Item` accepts literal selections or terminal nonempty basename prefixes
+such as `Uninst*`. Literal dollar names are supported; root-wide `*`, ancestor
+wildcards, and persistence overlap reject. `-ErrorAction SilentlyContinue` permits
+missing selections only. Permission and validation errors still fail.
+
+All selected paths and copy destinations are checked before mutation. Copy
+replaces each regular file atomically; an I/O failure can leave earlier files
+updated, and prevents subsequent cleanup. Tree operations are not whole-tree
+transactions. Limits are 100,000 entries, depth 64, 4 GiB per file and 8 GiB total.

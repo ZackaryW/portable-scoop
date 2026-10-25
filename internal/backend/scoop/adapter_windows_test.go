@@ -65,3 +65,17 @@ func TestCheckedFilesystemHelpers(t *testing.T) {
 		t.Fatalf("filesystem checks: %v\n%s", err, out)
 	}
 }
+
+func TestTreeActionLifecycle(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	defer cancel()
+	script, err := filepath.Abs("../../../tests/backend/tree-action-tests.ps1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ps := filepath.Join(os.Getenv("SystemRoot"), "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
+	out, err := exec.CommandContext(ctx, ps, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", script, "-Root", testutil.TempDir(t)).CombinedOutput()
+	if err != nil {
+		t.Fatalf("tree lifecycle checks: %v\n%s", err, out)
+	}
+}

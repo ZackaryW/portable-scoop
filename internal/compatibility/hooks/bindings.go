@@ -172,7 +172,7 @@ func expression(c Context, scope bindings, ts []token) (literalValue, error) {
 		if err != nil {
 			return literalValue{}, err
 		}
-		if parent.root == "" || parent.list != nil || child.root != "" || child.list != nil || !safeRelative(child.text) || (parent.text != "" && !safeRelative(parent.text)) {
+		if parent.root == "" || parent.list != nil || child.root != "" || child.list != nil || !literalTreePath(child.text) || (parent.text != "" && !literalTreePath(parent.text)) {
 			return literalValue{}, fmt.Errorf("Join-Path requires a checked root and literal relative child")
 		}
 		if len(parent.text)+len(child.text)+1 > maxLiteralBytes {

@@ -44,6 +44,9 @@ foreach ($relative in $sites.Keys) {
     [IO.File]::WriteAllText($file,$text,(New-Object Text.UTF8Encoding($false)))
 }
 Copy-Item -LiteralPath (Join-Path $projectRoot 'backend\scoop\adapter\system.ps1') -Destination (Join-Path $engine 'lib\system.ps1') -Force
+foreach($name in @('portscoop-filesystem.ps1','portscoop-tree-actions.ps1')) {
+    Copy-Item -LiteralPath (Join-Path $projectRoot ('backend\scoop\adapter\'+$name)) -Destination (Join-Path $engine ('lib\'+$name))
+}
 $bucketFile=Join-Path $engine 'lib\buckets.ps1'
 $bucketText=[IO.File]::ReadAllText($bucketFile)
 $oldDiagnostic="Git is required for buckets. Run 'scoop install git' and try again."

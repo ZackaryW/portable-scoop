@@ -78,6 +78,8 @@ function remove_from_path($dir, $global) { Remove-Path @($dir) -Global:$global }
 
 # Only typed operations from the frozen request reach this executor. No manifest
 # script text is evaluated. Check ancestors as well as the destination itself.
+. "$PSScriptRoot\portscoop-filesystem.ps1"
+. "$PSScriptRoot\portscoop-tree-actions.ps1"
 function Assert-PortscoopActionPath {
     param([string]$Root, [string]$Path)
     $full = [IO.Path]::GetFullPath($Path)
@@ -103,12 +105,13 @@ function Assert-PortscoopRelativePath {
 }
 function Invoke-PortscoopAction {
     param([psobject]$Action, [string]$App, [string]$Version, [string]$Directory, [string]$PersistDirectory, [object[]]$PersistMappings)
-    if ($Action.kind -cnotin @('ensure-persisted-file','rename-package-file','copy-package-file','ensure-directory','write-default-file') -or $Action.phase -cnotin @('pre_install','post_install')) { throw 'Unsupported portable action' }
+    if ($Action.kind -cnotin @('ensure-persisted-file','rename-package-file','copy-package-file','ensure-directory','write-default-file','copy-package-tree','cleanup-package-tree') -or $Action.phase -cnotin @('pre_install','post_install')) { throw 'Unsupported portable action' }
     foreach ($component in @($App,$Version)) {
         if ($component -notmatch '\A[A-Za-z0-9][A-Za-z0-9._+-]*\z') { throw 'Invalid portable action identity' }
         Assert-PortscoopRelativePath $component
     }
-    Assert-PortscoopRelativePath $Action.path
+    if($Action.kind -ceq 'copy-package-tree'){Assert-PortableTreeName $Action.path}
+    elseif($Action.kind -cne 'cleanup-package-tree'){Assert-PortscoopRelativePath $Action.path}
     if ($App -ieq 'scoop' -or $Version -ieq 'current') { throw 'Reserved portable action layout' }
     $root=[IO.Path]::GetFullPath($env:PORTSCOOP_ROOT)
     $physical=Join-Path $root "scoop\apps\$App\$Version"
@@ -123,6 +126,10 @@ function Invoke-PortscoopAction {
         if ($link.LinkType -ne 'Junction' -or $targets.Count -ne 1 -or -not ([IO.Path]::GetFullPath($targets[0])).Equals($physical,[StringComparison]::OrdinalIgnoreCase)) { throw 'Current alias differs from approved version' }
     }
     if (-not ([IO.Path]::GetFullPath($Directory)).Equals($expectedDir,[StringComparison]::OrdinalIgnoreCase) -or -not ([IO.Path]::GetFullPath($PersistDirectory)).Equals($expectedPersist,[StringComparison]::OrdinalIgnoreCase)) { throw 'Portable action layout differs from Store' }
+    if($Action.kind -cin @('copy-package-tree','cleanup-package-tree')) {
+        Invoke-PortscoopTreeAction $Action $root $physical $expectedPersist $PersistMappings
+        return
+    }
     $target=Join-Path $physical $Action.path
     if ($Action.kind -ceq 'ensure-persisted-file' -and $Action.phase -ceq 'post_install' -and $PersistMappings.Count) {
         $initializer=[pscustomobject]@{phase=$Action.phase;kind='write-default-file';path=$Action.path;persist_path=$Action.persist_path;guard='package-missing';content='';encoding='utf8'}

@@ -10,14 +10,18 @@ type Context struct {
 	Persist [][2]string
 }
 type Action struct {
-	Phase       string `json:"phase"`
-	Kind        string `json:"kind"`
-	Path        string `json:"path"`
-	Source      string `json:"source,omitempty"`
-	Content     string `json:"content,omitempty"`
-	PersistPath string `json:"persist_path,omitempty"`
-	Encoding    string `json:"encoding,omitempty"`
-	Guard       string `json:"guard,omitempty"`
+	Phase       string   `json:"phase"`
+	Kind        string   `json:"kind"`
+	Path        string   `json:"path"`
+	Source      string   `json:"source,omitempty"`
+	Content     string   `json:"content,omitempty"`
+	PersistPath string   `json:"persist_path,omitempty"`
+	Encoding    string   `json:"encoding,omitempty"`
+	Guard       string   `json:"guard,omitempty"`
+	Paths       []string `json:"paths,omitempty"`
+	Recursive   bool     `json:"recursive,omitempty"`
+	MissingOK   bool     `json:"missing_ok,omitempty"`
+	Force       bool     `json:"force,omitempty"`
 }
 type Decision struct {
 	Phase       string `json:"phase"`
@@ -27,18 +31,19 @@ type Decision struct {
 	Reason      string `json:"reason"`
 }
 type Plan struct {
-	Actions              []Action
-	Decisions            []Decision
-	Reads, SkippedWrites []string
+	Actions                      []Action
+	Decisions                    []Decision
+	Reads, Writes, SkippedWrites []string
 }
 type operation struct {
 	action               *Action
 	reason               string
 	reads, skippedWrites []string
+	writes               []string
 }
 type recognizer func(Context, node) (operation, bool, error)
 
-var operations = []recognizer{structural, rename, initialize, optionalImport, localCopy, directory, literalDefault}
+var operations = []recognizer{structural, rename, initialize, optionalImport, cleanup, treeCopy, localCopy, directory, literalDefault}
 
 func Compile(c Context, phase, source string) (Plan, error) {
 	return compile(c, phase, source, operations)
@@ -61,6 +66,7 @@ func compile(c Context, phase, source string, registry []recognizer) (Plan, erro
 	if err != nil {
 		return fail(0, 0, err.Error())
 	}
+	nodes = splitLocalGuards(c, nodes)
 	var accepted []operation
 	for i, n := range nodes {
 		found := false
@@ -95,6 +101,7 @@ func compile(c Context, phase, source string, registry []recognizer) (Plan, erro
 	}
 	for i, op := range accepted {
 		plan.Reads = append(plan.Reads, op.reads...)
+		plan.Writes = append(plan.Writes, op.writes...)
 		plan.SkippedWrites = append(plan.SkippedWrites, op.skippedWrites...)
 		for _, read := range op.reads {
 			for _, other := range accepted {

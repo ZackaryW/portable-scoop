@@ -50,7 +50,7 @@ func Verify(paths environment.Paths) (environment.BackendMetadata, error) {
 			return backend, fmt.Errorf("managed backend artifact changed: %s; restore a compatible release", relative)
 		}
 	}
-	for _, required := range []string{environment.EngineEntryRelative, environment.AdapterRelative, ".portscoop/backend/request-reader.ps1", "scoop/apps/scoop/current/lib/system.ps1", "scoop/apps/scoop/current/lib/manifest.ps1", ToolsRelative + "/tools.json"} {
+	for _, required := range []string{environment.EngineEntryRelative, environment.AdapterRelative, ".portscoop/backend/request-reader.ps1", "scoop/apps/scoop/current/lib/system.ps1", "scoop/apps/scoop/current/lib/manifest.ps1", "scoop/apps/scoop/current/lib/portscoop-filesystem.ps1", "scoop/apps/scoop/current/lib/portscoop-tree-actions.ps1", ToolsRelative + "/tools.json"} {
 		if artifacts[required] == "" {
 			return backend, fmt.Errorf("backend does not verify required artifact %s", required)
 		}
