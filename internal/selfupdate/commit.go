@@ -37,23 +37,26 @@ func verifySources(tx *Transaction) error {
 			return err
 		}
 	} else {
-		h, err := runtimeinstall.Hash(tx.Target.Root, ".portscoop/backend/backend.json")
-		if err != nil || h != tx.BackendHash {
-			return fmt.Errorf("retained Store backend changed")
-		}
-		var backend environment.BackendMetadata
-		if err = runtimeinstall.Read(tx.Target.Root, ".portscoop/backend/backend.json", &backend); err != nil {
-			return err
-		}
-		compatible := false
-		for _, c := range d.Backends {
-			if c == (runtimeinstall.Contract{Schema: backend.SchemaVersion, Protocol: backend.ProtocolMajor, Upstream: backend.UpstreamRevision, Patch: backend.PatchRevision}) {
-				compatible = true
+		if tx.Controller == nil {
+			h, err := runtimeinstall.Hash(tx.Target.Root, ".portscoop/backend/backend.json")
+			if err != nil || h != tx.BackendHash {
+				return fmt.Errorf("retained Store backend changed")
+			}
+			var backend environment.BackendMetadata
+			if err = runtimeinstall.Read(tx.Target.Root, ".portscoop/backend/backend.json", &backend); err != nil {
+				return err
+			}
+			compatible := false
+			for _, c := range d.Backends {
+				if c == (runtimeinstall.Contract{Schema: backend.SchemaVersion, Protocol: backend.ProtocolMajor, Upstream: backend.UpstreamRevision, Patch: backend.PatchRevision}) {
+					compatible = true
+				}
+			}
+			if !compatible {
+				return fmt.Errorf("candidate does not support the retained backend")
 			}
 		}
-		if !compatible {
-			return fmt.Errorf("candidate does not support the retained backend")
-		}
+
 		var before, after runtimeinstall.Receipt
 		if err = runtimeinstall.Read(tx.Directory, "backup/"+runtimeinstall.ReceiptName, &before); err != nil {
 			return err
@@ -70,6 +73,21 @@ func verifySources(tx *Transaction) error {
 			if after.Artifacts[n] != next[n] {
 				return fmt.Errorf("candidate receipt hash mismatch")
 			}
+		}
+		if tx.Controller != nil {
+			previous, err := backendInventory(filepath.Join(tx.Directory, "backup"), backendMetadata, false, runtimeinstall.Release{})
+			if err != nil {
+				return err
+			}
+			updated, err := backendInventory(filepath.Join(tx.Directory, "candidate"), "backend/backend.json", true, r)
+			if err != nil {
+				return err
+			}
+			if previous[backendMetadata] != tx.BackendHash {
+				return fmt.Errorf("backend backup ownership changed")
+			}
+			addInventory(old, previous)
+			addInventory(next, updated)
 		}
 		old[runtimeinstall.ReceiptName], err = runtimeinstall.Hash(tx.Directory, "backup/"+runtimeinstall.ReceiptName)
 		if err != nil {
@@ -106,6 +124,9 @@ func verifySources(tx *Transaction) error {
 				return fmt.Errorf("candidate damaged: %s", op.Path)
 			}
 		}
+	}
+	if tx.Controller != nil {
+		return verifyController(tx)
 	}
 	if old["psp.exe"] != tx.WorkerHash {
 		return fmt.Errorf("worker is not the verified previous runtime")

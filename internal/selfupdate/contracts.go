@@ -71,18 +71,19 @@ type Operation struct {
 	New  string `json:"new,omitempty"`
 }
 type Transaction struct {
-	Schema        int                   `json:"schema_version"`
-	Target        runtimeinstall.Target `json:"target"`
-	Directory     string                `json:"directory"`
-	Nonce         string                `json:"nonce"`
-	Version       string                `json:"version"`
-	Created       time.Time             `json:"created"`
-	WorkerHash    string                `json:"worker_hash"`
-	BackendHash   string                `json:"backend_hash,omitempty"`
-	ParentPID     uint32                `json:"parent_pid"`
-	ParentCreated uint64                `json:"parent_created"`
-	ParentImage   string                `json:"parent_image"`
-	Operations    []Operation           `json:"operations"`
+	Controller    *runtimeinstall.Target `json:"controller,omitempty"`
+	Schema        int                    `json:"schema_version"`
+	Target        runtimeinstall.Target  `json:"target"`
+	Directory     string                 `json:"directory"`
+	Nonce         string                 `json:"nonce"`
+	Version       string                 `json:"version"`
+	Created       time.Time              `json:"created"`
+	WorkerHash    string                 `json:"worker_hash"`
+	BackendHash   string                 `json:"backend_hash,omitempty"`
+	ParentPID     uint32                 `json:"parent_pid"`
+	ParentCreated uint64                 `json:"parent_created"`
+	ParentImage   string                 `json:"parent_image"`
+	Operations    []Operation            `json:"operations"`
 }
 type Journal struct {
 	Schema  int    `json:"schema_version"`

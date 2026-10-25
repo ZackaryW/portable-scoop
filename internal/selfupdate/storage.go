@@ -264,8 +264,19 @@ func (Disk) Prepare(tx *Transaction) error {
 				compatible = true
 			}
 		}
-		if !compatible {
-			return fmt.Errorf("candidate needs a different backend; initialize a fresh Store from its complete release")
+		if tx.Controller != nil {
+			previous, err := backendInventory(t.Root, backendMetadata, false, runtimeinstall.Release{})
+			if err != nil {
+				return err
+			}
+			updated, err := backendInventory(candidate, "backend/backend.json", true, r)
+			if err != nil {
+				return err
+			}
+			addInventory(old, previous)
+			addInventory(next, updated)
+		} else if !compatible {
+			return fmt.Errorf("candidate needs a different backend; use a current Host self-update to update this registered Store")
 		}
 		for _, n := range runtimeinstall.Launchers {
 			next[n] = r.Artifacts[n]
@@ -314,14 +325,19 @@ func (Disk) Prepare(tx *Transaction) error {
 			}
 		}
 	}
-	if err = copyFile(t.Root, "psp.exe", tx.Directory, "worker.exe"); err != nil {
+	if tx.Controller != nil {
+		err = prepareController(tx)
+	} else {
+		err = copyFile(t.Root, "psp.exe", tx.Directory, "worker.exe")
+	}
+	if err != nil {
 		return err
 	}
 	tx.WorkerHash, err = runtimeinstall.Hash(tx.Directory, "worker.exe")
 	if err != nil {
 		return err
 	}
-	if tx.WorkerHash != old["psp.exe"] {
+	if tx.Controller == nil && tx.WorkerHash != old["psp.exe"] {
 		return fmt.Errorf("worker does not match current owned launcher")
 	}
 	tx.ParentPID, tx.ParentCreated, tx.ParentImage, err = currentProcessIdentity()
@@ -408,7 +424,8 @@ func loadTransaction(directory string) (*Transaction, error) {
 				return nil, fmt.Errorf("operation outside distribution")
 			}
 		} else {
-			allowed := op.Path == runtimeinstall.ReceiptName
+			_, backendPath := backendSource(op.Path)
+			allowed := op.Path == runtimeinstall.ReceiptName || (tx.Controller != nil && backendPath)
 			for _, n := range runtimeinstall.Launchers {
 				allowed = allowed || op.Path == n
 			}
@@ -527,6 +544,9 @@ func replace(tx *Transaction, op Operation, rollback bool) error {
 func candidatePath(p string) string {
 	if p == runtimeinstall.ReceiptName {
 		return "receipt.json"
+	}
+	if source, ok := backendSource(p); ok {
+		return "candidate/" + source
 	}
 	return "candidate/" + p
 }
