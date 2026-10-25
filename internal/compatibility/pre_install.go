@@ -15,9 +15,6 @@ func preInstall(m Manifest, raw json.RawMessage) (result, error) {
 	if err != nil {
 		return result{}, err
 	}
-	if matchesBitwardenRecipe(lines) {
-		return bitwardenPreInstall(m, raw)
-	}
 	match := emptyConfig.FindStringSubmatch(strings.Join(lines, "\n"))
 	if len(match) != 3 || match[1] != match[2] || !relative(match[1]) {
 		return unsupported("unrecognized pre-install hook; no complete portable replacement")

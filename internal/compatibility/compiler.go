@@ -29,10 +29,9 @@ type Decision struct {
 
 // Action has no command or script payload. Paths are package-relative.
 type Action struct {
-	Phase  string `json:"phase"`
-	Kind   string `json:"kind"`
-	Path   string `json:"path"`
-	Source string `json:"source,omitempty"`
+	Phase string `json:"phase"`
+	Kind  string `json:"kind"`
+	Path  string `json:"path"`
 }
 
 type Plan struct {

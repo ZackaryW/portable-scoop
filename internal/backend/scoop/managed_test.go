@@ -47,33 +47,6 @@ func TestManagedFreezesPortableActionsAndReportsDecisions(t *testing.T) {
 	}
 }
 
-func TestManagedFreezesBitwardenRenameAndSelectiveSkip(t *testing.T) {
-	local := managedFixture(t)
-	data, err := os.ReadFile("../../compatibility/testdata/bitwarden.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	path := filepath.Join(local.Paths.Buckets, "extras", "bucket", "bitwarden.json")
-	fixtureFile(t, path, data)
-	process := &captureProcess{run: func(runner.Command) { fixtureFile(t, path, []byte(`{"pre_install":"unreviewed replacement"}`)) }}
-	var notices bytes.Buffer
-	_, err = (Managed{Runner: process}).Execute(context.Background(), local, []string{"install", "extras/bitwarden"}, runner.Streams{Err: &notices})
-	if err != nil {
-		t.Fatal(err)
-	}
-	var frozen map[string]FrozenManifest
-	if err := json.Unmarshal(process.request.Manifests, &frozen); err != nil {
-		t.Fatal(err)
-	}
-	item := frozen["bitwarden"]
-	if len(item.Actions) != 1 || item.Actions[0] != (compatibility.Action{Phase: "pre_install", Kind: "rename-package-file", Source: "Bitwarden-Portable-2026.10.1.exe", Path: "Bitwarden.exe"}) {
-		t.Fatalf("bad frozen rename: %+v", frozen)
-	}
-	if !strings.Contains(notices.String(), "skip reviewed optional import from host AppData") {
-		t.Fatal(notices.String())
-	}
-}
-
 func fixtureFile(t *testing.T, path string, data []byte) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {

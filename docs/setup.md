@@ -85,7 +85,7 @@ Portscoop does not guarantee backward compatibility with older releases or Store
 formats. A breaking release may require a fresh Store initialized from its complete
 verified distribution. Legacy support, migration, and in-place downgrade are not
 release requirements. This release requires schema/protocol 1 and backend patch
-`portable-fields-v1.1`; mismatched launchers and backends fail verification.
+`portable-fields-v1.0`; mismatched launchers and backends fail verification.
 
 Retain the old Store separately if its packages or persisted data are still needed.
 Returning to an earlier release means using its matching Store, not replacing

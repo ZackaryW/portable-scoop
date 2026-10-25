@@ -96,10 +96,8 @@ function Assert-PortscoopActionPath {
 
 function Invoke-PortscoopAction {
     param([psobject]$Action, [string]$App, [string]$Version, [string]$Directory, [string]$PersistDirectory)
-    if ($Action.kind -cnotin @('ensure-persisted-file', 'rename-package-file') -or $Action.phase -cne 'pre_install') { throw 'Unsupported portable action' }
-    $components = @($App, $Version, [string]$Action.path)
-    if ($Action.kind -ceq 'rename-package-file') { $components += [string]$Action.source }
-    foreach ($component in $components) {
+    if ($Action.kind -cne 'ensure-persisted-file' -or $Action.phase -cne 'pre_install') { throw 'Unsupported portable action' }
+    foreach ($component in @($App, $Version, [string]$Action.path)) {
         if ($component -notmatch '\A[A-Za-z0-9][A-Za-z0-9._+-]*\z' -or $component.EndsWith('.') -or
             ($component.Split('.')[0] -match '\A(CON|PRN|AUX|NUL|COM[0-9]|LPT[0-9])\z')) { throw 'Invalid portable action path component' }
     }
@@ -112,15 +110,6 @@ function Invoke-PortscoopAction {
     $target = Join-Path $expectedDir $Action.path
     $saved = Join-Path $expectedPersist $Action.path
     Assert-PortscoopActionPath -Root $root -Path $target
-    if ($Action.kind -ceq 'rename-package-file') {
-        $source = Join-Path $expectedDir $Action.source
-        Assert-PortscoopActionPath -Root $root -Path $source
-        if (-not [IO.File]::Exists($source)) { throw 'Portable rename source is not a regular file' }
-        if ([IO.File]::Exists($target) -or [IO.Directory]::Exists($target)) { throw 'Portable rename destination already exists' }
-        # Two-argument File.Move never overwrites. No executable is launched.
-        [IO.File]::Move($source, $target)
-        return
-    }
     Assert-PortscoopActionPath -Root $root -Path $saved
     if ([IO.Directory]::Exists($target) -or [IO.Directory]::Exists($saved)) { throw 'Portable configuration path is a directory' }
     if ([IO.File]::Exists($saved)) { return }

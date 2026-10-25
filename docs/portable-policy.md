@@ -26,12 +26,11 @@ verified artifact hashes.
 ## Manifest fields
 
 See [Manifest compatibility](compatibility.md) for the per-field use/rewrite/skip/reject
-contract and supported replacements. HTTP(S) ZIP and checked direct EXE payloads support declared SHA-256,
+contract and supported replacements. HTTP(S) ZIP payloads support declared SHA-256,
 SHA-1, SHA-512, and MD5 digests; release integrity still requires SHA-256. Shortcut
 entries become Store-owned launch aliases. Native shims support literal fixed
-arguments. Reviewed persisted-file initialization and Bitwarden pre-install recipes
-have typed replacements. Bitwarden's optional host AppData import is skipped while
-its required local rename is performed; unknown scripts and required unsupported integration fail explicitly.
+arguments. One complete persisted-file initialization hook pattern has a typed
+replacement; unknown scripts and required unsupported integration fail explicitly.
 Module discovery is unsupported, rather than silently ignored.
 
 Before install/update/uninstall, the entire dependency closure is loaded,
