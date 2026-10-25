@@ -32,9 +32,9 @@ func insidePath(path, root string) bool {
 	return path == root || strings.HasPrefix(path, root+string(filepath.Separator))
 }
 
-// BuildEnvironment is per-call and never changes the caller's process state.
-// Paths come from the fixed layout rather than inherited Scoop variables.
-func BuildEnvironment(local environment.Context, parent []string, files environment.Filesystem) ([]string, error) {
+// baseEnvironment filters inherited Store roots and private transport settings.
+// Git policy is deliberately applied only by the backend builder below.
+func baseEnvironment(local environment.Context, parent []string, files environment.Filesystem) (map[string]string, error) {
 	expected, err := environment.PathsAt(local.Paths.Root)
 	if err != nil || expected != local.Paths {
 		return nil, fmt.Errorf("invalid resolved portable path context")
@@ -106,7 +106,7 @@ func BuildEnvironment(local environment.Context, parent []string, files environm
 		values["PSMODULEPATH"] = filter(modulePath)
 	}
 	for key := range values {
-		if strings.HasPrefix(key, "SCOOP") || strings.HasPrefix(key, "PORTSCOOP") || strings.HasPrefix(key, "GIT_") {
+		if strings.HasPrefix(key, "SCOOP") || strings.HasPrefix(key, "PORTSCOOP") {
 			delete(values, key)
 		}
 	}
@@ -117,6 +117,20 @@ func BuildEnvironment(local environment.Context, parent []string, files environm
 	values["TEMP"] = local.Paths.Temp
 	values["TMP"] = local.Paths.Temp
 	values["PORTSCOOP_ROOT"] = local.Paths.Root
+	return values, nil
+}
+
+// BuildEnvironment gives package operations their private Git policy.
+func BuildEnvironment(local environment.Context, parent []string, files environment.Filesystem) ([]string, error) {
+	values, err := baseEnvironment(local, parent, files)
+	if err != nil {
+		return nil, err
+	}
+	for key := range values {
+		if strings.HasPrefix(key, "GIT_") {
+			delete(values, key)
+		}
+	}
 	values["GIT_CONFIG_NOSYSTEM"] = "1"
 	values["GIT_CONFIG_GLOBAL"] = filepath.Join(local.Paths.State, "git-global.config")
 	values["GIT_TERMINAL_PROMPT"] = "0"
@@ -126,6 +140,28 @@ func BuildEnvironment(local environment.Context, parent []string, files environm
 	values["GIT_CONFIG_VALUE_0"] = filepath.Join(local.Paths.State, "git-hooks")
 	values["GIT_CONFIG_KEY_1"] = "init.templateDir"
 	values["GIT_CONFIG_VALUE_1"] = filepath.Join(local.Paths.State, "git-templates")
+	return sortedEnvironment(values), nil
+}
+
+// ApplicationEnvironment does not introduce or remove caller Git settings.
+// portable must come from the validated Store state, after relocation.
+func ApplicationEnvironment(local environment.Context, parent []string, files environment.Filesystem, portable map[string]string) ([]string, error) {
+	values, err := baseEnvironment(local, parent, files)
+	if err != nil {
+		return nil, err
+	}
+	for key, value := range portable {
+		key = strings.ToUpper(key)
+		if key == "PATH" {
+			values[key] = value + ";" + values[key]
+		} else {
+			values[key] = value
+		}
+	}
+	return sortedEnvironment(values), nil
+}
+
+func sortedEnvironment(values map[string]string) []string {
 	keys := make([]string, 0, len(values))
 	for key := range values {
 		keys = append(keys, key)
@@ -135,7 +171,7 @@ func BuildEnvironment(local environment.Context, parent []string, files environm
 	for _, key := range keys {
 		result = append(result, key+"="+values[key])
 	}
-	return result, nil
+	return result
 }
 
 func PowerShell(parent []string, files environment.Filesystem) (string, error) {

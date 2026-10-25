@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -339,8 +340,13 @@ func environmentContent(data []byte, from, to string) ([]byte, error) {
 		return nil, fmt.Errorf("unsupported portable environment state")
 	}
 	reserved := map[string]bool{"SYSTEMROOT": true, "WINDIR": true, "COMSPEC": true, "PSMODULEPATH": true, "USERPROFILE": true, "HOME": true, "APPDATA": true, "LOCALAPPDATA": true, "PROGRAMDATA": true, "TEMP": true, "TMP": true, "XDG_CONFIG_HOME": true}
+	seen := map[string]bool{}
 	for name, value := range state.Values {
 		upper := strings.ToUpper(name)
+		if !portableVariableName.MatchString(name) || strings.ContainsRune(value, 0) || seen[upper] {
+			return nil, fmt.Errorf("invalid or duplicate portable variable: %s", name)
+		}
+		seen[upper] = true
 		if reserved[upper] || strings.HasPrefix(upper, "SCOOP") || strings.HasPrefix(upper, "PORTSCOOP") || strings.HasPrefix(upper, "GIT_") {
 			return nil, fmt.Errorf("reserved variable in portable state: %s", name)
 		}
@@ -354,4 +360,41 @@ func environmentContent(data []byte, from, to string) ([]byte, error) {
 		state.Values[name] = relocateText(value, from, to)
 	}
 	return json.MarshalIndent(state, "", "  ")
+}
+
+var portableVariableName = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
+
+// PortableEnvironmentValues reads only validated, regular Store-owned state.
+// It does not create state or adopt changes into the relocation inventory.
+func PortableEnvironmentValues(paths environment.Paths) (map[string]string, error) {
+	path := filepath.Join(paths.State, "environment.json")
+	if err := containedParent(paths.Root, path); err != nil {
+		return nil, err
+	}
+	info, err := os.Lstat(path)
+	if os.IsNotExist(err) {
+		return map[string]string{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("portable environment state is not a regular file")
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	data, err = environmentContent(data, paths.Root, paths.Root)
+	if err != nil {
+		return nil, err
+	}
+	var state struct {
+		SchemaVersion int               `json:"schema_version"`
+		Values        map[string]string `json:"values"`
+	}
+	if err := metadata.Decode(data, &state); err != nil {
+		return nil, err
+	}
+	return state.Values, nil
 }

@@ -35,3 +35,43 @@ transform values before launching a native executable. Windows PowerShell 5.1
 can discard empty string arguments; Portscoop cannot reconstruct those lost
 values. Prefer a caller with suitable native argument passing when an empty
 argument is significant. Quote values according to your calling shell.
+
+## Shim ownership and runtime handlers
+
+Resolution uses the selected Store's recorded shim inventory after relocation
+preparation. Equivalent generated representations (such as `.cmd` and shell
+wrappers for one batch alias) form one logical name. Name matching ignores case;
+paths and Windows device names are rejected. Native aliases require both the
+recorded pinned binary shim and its `.shim` target metadata. The validated
+original `.exe` or `.com` target is used instead of executing the binary shim.
+
+PowerShell `.ps1` wrapper families describe a Windows PowerShell target; batch
+`.cmd`/`.bat` wrapper families describe a batch target. Recognition in the owned
+inventory is separate from qualification of an execution handler and argument
+form. An unqualified handler or argument form fails explicitly. Fixed argument
+strings embedded in shim metadata are currently unqualified and rejected.
+
+Python (`.py`), Java (`.jar`), and shell-script wrappers have no qualified
+Store-bound runtime handler. They report that missing handler instead of
+searching for Python, Java, Bash, or another runtime on host PATH. Their presence
+does not enable a host-runtime fallback.
+
+Conflicting wrapper targets, altered/unrecorded artifacts, missing native-family
+members, missing target files, and targets escaping their package fail before
+launch. Windows file-handle resolution follows junctions when checking the final
+target. A missing shim never falls back to ordinary Scoop, another Store, or a
+command on host PATH.
+
+## Child environment
+
+Each invocation builds its own environment snapshot. Foreign Scoop activation
+paths and stale Portscoop transport settings are filtered, the selected Store's
+shims are included on PATH, and validated portable environment values are applied
+after relocation. Portable PATH additions prepend that child PATH. Malformed,
+duplicate-case, reserved-root, and NUL-bearing state is rejected.
+
+Normal caller Git settings remain available to applications. `pspe` does not
+introduce the package runner's private global Git config, hook/template paths,
+or prompt restrictions. Neither builder modifies the caller's process environment
+or user/machine environment settings. Applications themselves run with the user's
+normal permissions; this is not an application runtime sandbox.
