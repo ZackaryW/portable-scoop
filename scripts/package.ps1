@@ -18,6 +18,12 @@ Copy-Item -LiteralPath (Join-Path $projectRoot 'get.ps1') -Destination $stage
 New-Item -ItemType Directory -Path (Join-Path $stage 'scripts') | Out-Null
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'install.ps1') -Destination (Join-Path $stage 'scripts')
 Copy-Item -LiteralPath (Join-Path $projectRoot 'docs') -Destination $stage -Recurse
+$updateDescriptor=@{
+    schema_version=1;update_protocol=1;version=$Version;platform='windows-amd64'
+    target_kinds=@('host','store');launchers=@('portscoop.exe','psp.exe','pspe.exe')
+    backends=@(@{schema_version=1;protocol_major=1;upstream_revision='e6aa3b366bdee8ed138c1e0f7b85192ebdd35d0f';patch_revision='portable-fields-v1.0'})
+} | ConvertTo-Json -Depth 6
+[IO.File]::WriteAllText((Join-Path $stage 'runtime-update.json'),$updateDescriptor,(New-Object Text.UTF8Encoding($false)))
 $artifacts=[ordered]@{}
 Get-ChildItem -LiteralPath $stage -File -Recurse -Force | Sort-Object FullName | ForEach-Object {
     $relative=$_.FullName.Substring($stage.Length+1).Replace('\','/')

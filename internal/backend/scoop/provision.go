@@ -17,6 +17,7 @@ import (
 	"portscoop/internal/metadata"
 	"portscoop/internal/relocation"
 	"portscoop/internal/runner"
+	"portscoop/internal/runtimeinstall"
 )
 
 type Release struct {
@@ -32,6 +33,15 @@ func VerifyRelease(root string) (Release, error) {
 // An installed Host may own one ready default Store outside its release
 // inventory. Downloaded payload verification remains strict.
 func verifyRelease(root string, allowDefaultStore bool) (Release, error) {
+	// The updater owns installed controls separately from the strict downloaded
+	// distribution. Both paths still validate every inventoried source file.
+	if _, err := os.Stat(filepath.Join(root, runtimeinstall.DescriptorName)); err == nil {
+		r, _, err := runtimeinstall.VerifyDistribution(root, allowDefaultStore)
+		if err == nil && r.PatchRevision != PatchRevision {
+			err = fmt.Errorf("incompatible release payload")
+		}
+		return Release{r.SchemaVersion, r.PatchRevision, r.Artifacts}, err
+	}
 	var release Release
 	root, err := (environment.OSFilesystem{}).Canonical(root)
 	if err != nil {
@@ -210,6 +220,18 @@ func (i Initializer) Init(ctx context.Context, root, name string) (environment.I
 		}
 	}
 	if err = verifyLaunchers(stage, release); err != nil {
+		return id, err
+	}
+	var descriptor runtimeinstall.Descriptor
+	if err = runtimeinstall.Read(releaseRoot, runtimeinstall.DescriptorName, &descriptor); err == nil {
+		if err = descriptor.Validate(); err != nil {
+			return id, err
+		}
+		receipt := runtimeinstall.NewReceipt(id.ID, descriptor, runtimeinstall.Release{SchemaVersion: release.SchemaVersion, PatchRevision: release.PatchRevision, Artifacts: release.Artifacts})
+		if err = runtimeinstall.Write(stage, runtimeinstall.ReceiptName, receipt); err != nil {
+			return id, err
+		}
+	} else if !os.IsNotExist(err) {
 		return id, err
 	}
 	if err = os.WriteFile(paths.Config, []byte("{}\n"), 0600); err != nil {

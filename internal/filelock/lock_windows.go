@@ -20,6 +20,11 @@ type Lock struct {
 }
 
 func Acquire(ctx context.Context, path string) (*Lock, error) {
+	return AcquireMode(ctx, path, true)
+}
+
+// AcquireMode uses Windows shared byte-range locks for runtime readers.
+func AcquireMode(ctx context.Context, path string, exclusive bool) (*Lock, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -31,8 +36,12 @@ func Acquire(ctx context.Context, path string) (*Lock, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open lock: %w", err)
 	}
+	flags := uint32(windows.LOCKFILE_FAIL_IMMEDIATELY)
+	if exclusive {
+		flags |= windows.LOCKFILE_EXCLUSIVE_LOCK
+	}
 	for {
-		err = windows.LockFileEx(handle, windows.LOCKFILE_EXCLUSIVE_LOCK|windows.LOCKFILE_FAIL_IMMEDIATELY, 0, 1, 0, &windows.Overlapped{})
+		err = windows.LockFileEx(handle, flags, 0, 1, 0, &windows.Overlapped{})
 		if err == nil {
 			return &Lock{handle: handle}, nil
 		}
