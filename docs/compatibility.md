@@ -26,4 +26,6 @@ Adding support means changing the corresponding field handler, adding its typed 
 
 ## Backend compatibility
 
-These replacements require backend patch `portable-fields-v1.0`. Both backend metadata and release inventory name that revision. An older Store fails verification before execution: copying new launcher executables into it is insufficient. Use a complete matching distribution to initialize a fresh Store. Automatic Store backend migration and self-update are separate work; this change does not mutate an old backend or ordinary Scoop.
+Portscoop does not guarantee backward compatibility with older Portscoop releases or Store formats. Breaking releases may require a fresh Store. Legacy execution paths and Store migration are not requirements; Scoop manifest compatibility remains the goal within the portable behavior supported by each field.
+
+These replacements require backend patch `portable-fields-v1.0`. Both backend metadata and release inventory name that revision. A launcher must use its matching verified backend. An incompatible Store fails verification before execution: copying new launcher executables into it is insufficient. Use a complete matching distribution to initialize a fresh Store, and retain the old Store separately if its data is still needed. Self-update does not imply support for migrating incompatible Stores.
