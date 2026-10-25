@@ -33,11 +33,37 @@ func literalDefault(c Context, n node) (operation, bool, error) {
 		return operation{}, false, nil
 	}
 	value := args["value"]
-	if value.quote == 0 && (value.text != "" || set) {
+	if value.value == nil && value.quote == 0 && (value.text != "" || set) {
 		return operation{}, true, fmt.Errorf("default content must be a quoted literal")
 	}
-	if value.quote == '"' && strings.Contains(value.text, "$") {
+	if value.value == nil && value.quote == '"' && strings.Contains(value.text, "$") {
 		return operation{}, true, fmt.Errorf("expanded default content is unsupported")
+	}
+	content := value.text
+	if value.value != nil {
+		v := *value.value
+		if v.root != "" {
+			return operation{}, true, fmt.Errorf("default content cannot contain a path root")
+		}
+		if v.list != nil {
+			var lines []string
+			for _, line := range v.list {
+				if line.root != "" || line.list != nil {
+					return operation{}, true, fmt.Errorf("default line must be literal")
+				}
+				lines = append(lines, line.text)
+			}
+			separator := ""
+			if set && args["nonewline"].text != "true" {
+				separator = "\r\n"
+			}
+			if !set {
+				return operation{}, true, fmt.Errorf("content arrays require Set-Content")
+			}
+			content = strings.Join(lines, separator)
+		} else {
+			content = v.text
+		}
 	}
 	encoding := strings.ToLower(args["encoding"].text)
 	if encoding == "" {
@@ -50,13 +76,12 @@ func literalDefault(c Context, n node) (operation, bool, error) {
 		return operation{}, true, fmt.Errorf("unsupported default encoding")
 	}
 	if encoding == "ascii" {
-		for _, r := range value.text {
+		for _, r := range content {
 			if r > 127 {
 				return operation{}, true, fmt.Errorf("non-ASCII default content")
 			}
 		}
 	}
-	content := value.text
 	if set && args["nonewline"].text != "true" {
 		content += "\r\n"
 	}

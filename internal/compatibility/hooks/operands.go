@@ -23,6 +23,24 @@ func safeRelative(s string) bool {
 	return true
 }
 func operandPath(c Context, t token, root string, glob bool) (string, error) {
+	if t.value != nil {
+		if t.value.list != nil || !strings.EqualFold(t.value.root, root) {
+			return "", fmt.Errorf("path must use $%s", root)
+		}
+		s := t.value.text
+		if glob {
+			if !strings.HasSuffix(s, "/*") {
+				return "", fmt.Errorf("expected directory contents wildcard")
+			}
+			s = strings.TrimSuffix(s, "/*")
+		} else {
+			s = strings.TrimSuffix(s, "/")
+		}
+		if !safeRelative(s) {
+			return "", fmt.Errorf("unsafe checked path operand")
+		}
+		return s, nil
+	}
 	if t.quote == '\'' {
 		return "", fmt.Errorf("path variables require expanding operands")
 	}

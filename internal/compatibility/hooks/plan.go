@@ -38,7 +38,7 @@ type operation struct {
 }
 type recognizer func(Context, node) (operation, bool, error)
 
-var operations = []recognizer{rename, initialize, optionalImport, localCopy, directory, literalDefault}
+var operations = []recognizer{structural, rename, initialize, optionalImport, localCopy, directory, literalDefault}
 
 func Compile(c Context, phase, source string) (Plan, error) {
 	return compile(c, phase, source, operations)
@@ -57,6 +57,10 @@ func compile(c Context, phase, source string, registry []recognizer) (Plan, erro
 	if err != nil {
 		return fail(0, 0, err.Error())
 	}
+	nodes, err = (&expansion{context: c}).nodes(nodes, bindings{}, false, 0)
+	if err != nil {
+		return fail(0, 0, err.Error())
+	}
 	var accepted []operation
 	for i, n := range nodes {
 		found := false
@@ -67,6 +71,9 @@ func compile(c Context, phase, source string, registry []recognizer) (Plan, erro
 			}
 			found = true
 			if err != nil {
+				if n.iteration > 0 {
+					err = fmt.Errorf("iteration %d: %w", n.iteration, err)
+				}
 				return fail(i+1, n.line, err.Error())
 			}
 			disposition := "skip"
@@ -74,13 +81,16 @@ func compile(c Context, phase, source string, registry []recognizer) (Plan, erro
 				disposition = "rewrite"
 				op.action.Phase = phase
 				plan.Actions = append(plan.Actions, *op.action)
+				if len(plan.Actions) > maxExpandedActions {
+					return fail(i+1, n.line, "expanded actions exceed 4096")
+				}
 			}
 			plan.Decisions = append(plan.Decisions, Decision{phase, i + 1, n.line, disposition, op.reason})
 			accepted = append(accepted, op)
 			break
 		}
 		if !found {
-			return fail(i+1, n.line, "unrecognized operation; complete hook required")
+			return fail(i+1, n.line, fmt.Sprintf("unrecognized operation (iteration %d); complete hook required", n.iteration))
 		}
 	}
 	for i, op := range accepted {

@@ -2,11 +2,17 @@
 
 The compiler under `internal/compatibility/hooks` is a bounded, non-evaluating language unit. Both `pre_install` and `post_install` use it. It has no application-name dispatch and does not execute PowerShell or inspect host AppData.
 
-The lexer preserves quoted operands, line positions, separators, and block structure. Complete constructs are dispatched to operation units. Unknown commands, dynamic substitutions, unsupported branches, backtick escapes, or executable remainders reject the entire hook plan; recognized actions are not returned after rejection.
+The lexer preserves quoted operands, literal/variable segments, line positions,
+separators, and block structure. Unknown commands, command substitutions,
+unsupported branches, or executable remainders reject the entire hook plan;
+recognized actions are not returned after rejection.
 
 Initial units recognize package-local `Rename-Item`, guarded empty persisted-file initialization through `Test-Path`/`New-Item`, and guarded optional AppData directory migration. The optional import must test both an empty destination and an existing host source, copy from that same source into the same declared persistent destination, and contain no extra effects. Optional directory creation must use the matching destination. Both pre-install and post-install plans retain their phase.
 
-Matching is based on validated syntax and operands. Tests vary package, filename, version, and profile names; Bitwarden is not a production exception. Literal version expansion is bounded to checked path operands. Host imports produce a skip diagnostic, not an executable action. Required reads overlapping omitted import output reject the plan, regardless of statement order.
+Matching is based on validated syntax and operands, without application-name
+exceptions. Literal version expansion uses the checked manifest version. Host
+imports produce a skip diagnostic, not an executable action. Required reads
+overlapping omitted import output reject the plan, regardless of statement order.
 
 The backend checks each invoked phase against the frozen declaration and executes actions in source order. All-skip hooks retain their declaration and explicit skip decision for deterministic saved-manifest recompilation. Required reads are checked against skipped import output across both phases.
 
@@ -20,8 +26,8 @@ Separate units recognize single-file `Copy-Item` from a literal `$dir` path,
 `New-Item -ItemType Directory` or `ensure` for directories, and `Set-Content` or
 `New-Item -ItemType File -Value` for quoted literal content. Each may stand alone
 or inside one matching negated `Test-Path` guard. File-copy wildcards, recursive
-copies, content arrays, variables, loops and command substitutions remain outside
-this bounded grammar. Host copies are handled only by the optional-import unit.
+copies and command substitutions remain outside this bounded grammar. Host
+copies are handled only by the optional-import unit.
 
 Missing-path guards must name the destination under `$dir`, or its declared
 mapping under `$persist_dir`. Mappings can include a file within a persisted
@@ -34,4 +40,28 @@ Literal content accepts ASCII, UTF-8 without BOM, and UTF-16LE (`unicode`, with
 BOM). `Set-Content` appends CRLF unless `-NoNewline` is present; `New-Item -Value`
 does not. Unspecified `Set-Content` encoding accepts ASCII content only; other
 encodings and non-ASCII values with ASCII encoding reject. Single-quoted dollar
-signs are literal bytes, while double-quoted variable expansion rejects.
+signs are literal bytes. Double-quoted strings may reference checked immutable
+bindings; unresolved variables reject.
+
+## Literal collections and bindings
+
+The compiler accepts comma-separated strings, multiline `@(...)` string arrays,
+single-assignment local variables, and a finite literal-list `ForEach-Object`
+block. Each iteration gets its own `$_` and local bindings. Nested loops,
+dynamic collections, method/property access, and reassignment reject. `Join-Path`
+accepts a checked package/persistence root and a literal relative child, with
+positional or `-Path`/`-ChildPath` arguments.
+
+Double quotes support backtick-dollar, backtick-backtick, and backtick-double-quote.
+Escaped dollars stay literal and are never reinterpreted as variables. This does
+not by itself expand the filename rules of an individual operation.
+
+`Set-Content` accepts literal line arrays: each line ends with CRLF, or values are
+concatenated with `-NoNewline`. Quoted `info` and `Write-Host` messages with resolved
+literal interpolation are diagnostic-only. They cannot hide an unsupported body.
+Existing guarded defaults keep their persistence-preservation behavior.
+
+Limits are 64 KiB of source, nesting depth 32, 256 collection elements, 4096
+expanded actions, and 1 MiB of expanded literal data. An additional 16,384-node
+work bound limits non-action expansion. One invalid iteration rejects every
+action; diagnostics retain its source line and iteration number.

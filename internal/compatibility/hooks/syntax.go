@@ -7,14 +7,19 @@ import (
 )
 
 type token struct {
-	text  string
-	quote byte
-	line  int
+	text     string
+	quote    byte
+	line     int
+	segments []stringSegment
+	value    *literalValue
 }
 type node struct {
 	command, condition []token
+	loop               []token
 	body               []node
 	line               int
+	iteration          int
+	binding            bool
 }
 
 func lex(source string) ([]token, error) {
@@ -46,48 +51,23 @@ func lex(source string) ([]token, error) {
 			i++
 			continue
 		}
-		if strings.ContainsRune("{}()|!", rune(c)) {
+		if strings.ContainsRune("{}()|!,=", rune(c)) {
 			out = append(out, token{text: string(c), line: line})
 			i++
 			continue
 		}
 		startLine := line
 		if c == '\'' || c == '"' {
-			q := c
-			i++
-			var b strings.Builder
-			closed := false
-			for i < len(source) {
-				c = source[i]
-				i++
-				if c == q {
-					if q == '\'' && i < len(source) && source[i] == q {
-						b.WriteByte(q)
-						i++
-						continue
-					}
-					closed = true
-					break
-				}
-				if c == '`' || c == 0 {
-					return nil, fmt.Errorf("line %d: unsupported quoted escape", line)
-				}
-				if c == '\n' {
-					line++
-				}
-				b.WriteByte(c)
+			t, next, nextLine, err := quotedToken(source, i, line)
+			if err != nil {
+				return nil, err
 			}
-			if !closed {
-				return nil, fmt.Errorf("line %d: unterminated string", startLine)
-			}
-			if i < len(source) && !strings.ContainsRune(" \t\r\n;{}()|!", rune(source[i])) {
-				return nil, fmt.Errorf("line %d: concatenated quoted expressions unsupported", line)
-			}
-			out = append(out, token{text: b.String(), quote: q, line: startLine})
+			i, line = next, nextLine
+			out = append(out, t)
 			continue
 		}
 		start := i
-		for i < len(source) && !strings.ContainsRune(" \t\r\n;{}()|!\"'`", rune(source[i])) {
+		for i < len(source) && !strings.ContainsRune(" \t\r\n;{}()|!,=\"'`", rune(source[i])) {
 			if source[i] == 0 {
 				return nil, fmt.Errorf("line %d: NUL", line)
 			}
@@ -134,6 +114,9 @@ func (p *parser) statements(depth int) ([]node, error) {
 			for p.pos < len(p.tokens) && nest > 0 {
 				if p.is("(") {
 					nest++
+					if nest > 32 {
+						return nil, fmt.Errorf("condition nesting exceeds 32")
+					}
 				}
 				if p.is(")") {
 					nest--
@@ -172,12 +155,47 @@ func (p *parser) statements(depth int) ([]node, error) {
 				return nil, fmt.Errorf("line %d: trailing block expression", n.line)
 			}
 		} else {
-			for p.pos < len(p.tokens) && !p.is(";") && !p.is("\n") && !p.is("}") {
+			nest := 0
+			for p.pos < len(p.tokens) && (nest > 0 || (!p.is(";") && !p.is("\n") && !p.is("}"))) {
 				if p.is("{") {
-					return nil, fmt.Errorf("line %d: unsupported block", n.line)
+					count := len(n.command)
+					if nest != 0 || count < 3 || n.command[count-2].text != "|" || n.command[count-2].quote != 0 || n.command[count-1].quote != 0 || !strings.EqualFold(n.command[count-1].text, "ForEach-Object") {
+						return nil, fmt.Errorf("line %d: unsupported block", n.line)
+					}
+					n.loop = n.command[:count-2]
+					n.command = nil
+					p.pos++
+					var err error
+					n.body, err = p.statements(depth + 1)
+					if err != nil {
+						return nil, err
+					}
+					if !p.is("}") {
+						return nil, fmt.Errorf("line %d: unclosed loop", n.line)
+					}
+					p.pos++
+					if p.pos < len(p.tokens) && !p.is(";") && !p.is("\n") && !p.is("}") {
+						return nil, fmt.Errorf("line %d: trailing loop expression", n.line)
+					}
+					break
+				}
+				if p.is("(") {
+					nest++
+					if nest > 32 {
+						return nil, fmt.Errorf("expression nesting exceeds 32")
+					}
+				}
+				if p.is(")") {
+					nest--
+					if nest < 0 {
+						return nil, fmt.Errorf("line %d: unmatched closing expression", n.line)
+					}
 				}
 				n.command = append(n.command, p.tokens[p.pos])
 				p.pos++
+			}
+			if nest != 0 {
+				return nil, fmt.Errorf("line %d: unclosed expression", n.line)
 			}
 		}
 		out = append(out, n)
