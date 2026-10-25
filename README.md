@@ -13,6 +13,22 @@ See [setup and two environments](docs/setup.md),
 [environment registrations](docs/environments.md), and the
 [supported package policy](docs/portable-policy.md).
 
+## Install
+
+In 64-bit Windows PowerShell 5.1, run:
+
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+Invoke-RestMethod -Uri https://raw.githubusercontent.com/ZackaryW/portable-scoop/main/get.ps1 | Invoke-Expression
+```
+
+Choose **Host** for a central launcher with optional user PATH integration, or
+**Store** for an independent portable environment. Choose an empty destination
+folder; Store initialization requires local NTFS. No Go compiler or existing
+Scoop installation is required. Repeat Store setup for additional environments.
+See [internet installation](docs/internet-install.md) for scripted destinations,
+version selection, and registration with a Host.
+
 ## Build
 
 Development requires Go 1.25 or newer and PowerShell to run the build helper.

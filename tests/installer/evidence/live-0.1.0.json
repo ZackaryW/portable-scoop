@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "qualified_at_utc": "2026-10-25T01:52:26.1470078Z",
+  "status": "passed",
+  "tag": "v0.1.0",
+  "source_commit": "ad0ba6b8e67622df0fe027bf3f2d095e0ece179a",
+  "workflow_run": "https://github.com/ZackaryW/portable-scoop/actions/runs/40151998884",
+  "publication": {
+    "id": 423091410,
+    "tag": "v0.1.0",
+    "target": "main",
+    "published_at": "2026-10-25T01:50:20Z",
+    "url": "https://github.com/ZackaryW/portable-scoop/releases/tag/v0.1.0",
+    "assets": [
+      {
+        "name": "portscoop-windows-amd64.zip",
+        "size": 7540647,
+        "digest": "sha256:2ddd0886edbe22a446337a1b60d248d2894dc8ea985074c777d1ff57742bda07",
+        "url": "https://github.com/ZackaryW/portable-scoop/releases/download/v0.1.0/portscoop-windows-amd64.zip"
+      },
+      {
+        "name": "portscoop-windows-amd64.zip.sha256",
+        "size": 95,
+        "digest": "sha256:0b6b26209b00ee5d5e3387a47b6c28d67bcf2da1b59219c2c866406fd1664ce0",
+        "url": "https://github.com/ZackaryW/portable-scoop/releases/download/v0.1.0/portscoop-windows-amd64.zip.sha256"
+      }
+    ]
+  },
+  "download_source": "Real GitHub main/tagged raw scripts and latest/versioned release assets; only wizard console answers were automated",
+  "payload_inventory": {
+    "status": "passed",
+    "verified_artifacts": 160,
+    "patch_revision": "portable-zip-v1.1"
+  },
+  "guest": {
+    "status": "passed",
+    "root": "C:\\Users\\Public\\PortscoopLive-b07316f914594956996ffbdb0712a9d4",
+    "release": "0.1.0",
+    "windows": "10.0.26200.0",
+    "powershell": "5.1.26100.6584",
+    "go_absent": true,
+    "checks": [
+      "Live main/get.ps1 IEX wizard, latest ZIP/checksum, exact host PATH entry and immediate psp env list",
+      "Live tagged entry/worker/release, Store initialization, explicit registration/default, direct execution and central delegation",
+      "Scoop sentinel and user/machine environment unchanged after restoring test PATH"
+    ],
+    "error": null
+  },
+  "physical_host": {
+    "tracked_scoop_files": 223,
+    "changed_files": [],
+    "user_environment_unchanged": true,
+    "machine_environment_unchanged": true
+  },
+  "qualifier_sha256_lf": "5de2b8c3225e18533e8e30ffdf19325cd2dd56263a221344ca31a544e769d1ee"
+}

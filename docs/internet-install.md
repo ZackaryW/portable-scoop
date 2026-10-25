@@ -5,7 +5,7 @@ Requires a published Windows x64 release in `ZackaryW/portable-scoop` and
 are unnecessary. Store initialization requires local NTFS with junction support.
 Git is needed later for Git-backed buckets; see [setup](setup.md).
 
-Once the installer source and first release are published, open PowerShell:
+Open PowerShell:
 
 ```powershell
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser

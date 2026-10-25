@@ -47,3 +47,11 @@ This qualifies the release payload and installer behavior without a compiler in
 the guest. It does **not** qualify the live GitHub endpoint: publication and a
 separate live download smoke test are still required. See
 [Windows evidence](evidence/windows-release.json) for the qualified artifact.
+
+After publication, `qualify-live.ps1` tests the actual GitHub endpoints in the
+disposable guest. Pass the guest path to `tests/backend/host-state.ps1` as
+`-Sentinel`, an output JSON path as `-Results`, and the published version as
+`-ReleaseVersion`. It automates console answers for the Host wizard while keeping
+all network cmdlets real, then installs a Store through the matching tag and
+checks central delegation. It restores the guest user PATH and retains installed
+files and a transcript. See [live release evidence](evidence/live-0.1.0.json).
