@@ -33,7 +33,29 @@ $metadata=@{schema_version=1;patch_revision='portable-operations-v1.0';artifacts
 [IO.File]::WriteAllText((Join-Path $stage 'release.json'),$metadata,(New-Object Text.UTF8Encoding($false)))
 & (Join-Path $stage 'portscoop.exe') __portscoop_verify_release
 if ($LASTEXITCODE -ne 0) { throw 'Release payload verification failed' }
-Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $archive
+# Windows PowerShell 5.1 Compress-Archive can emit backslash entry names.
+# Specify every ZIP name explicitly so older self-updaters accept the artifact.
+Add-Type -AssemblyName System.IO.Compression
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$archiveStream=[IO.File]::Open($archive,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
+$zip=$null
+try {
+    $zip=[IO.Compression.ZipArchive]::new($archiveStream,[IO.Compression.ZipArchiveMode]::Create,$false)
+    Get-ChildItem -LiteralPath $stage -File -Recurse -Force | Sort-Object FullName | ForEach-Object {
+        $relative=$_.FullName.Substring($stage.Length+1).Replace('\','/')
+        $null=[IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip,$_.FullName,$relative,[IO.Compression.CompressionLevel]::Optimal)
+    }
+} finally {
+    if ($null -ne $zip) { $zip.Dispose() }
+    $archiveStream.Dispose()
+}
+Push-Location -LiteralPath $projectRoot
+try {
+    & go run ./scripts/verify-release-archive -archive $archive
+    if ($LASTEXITCODE -ne 0) { throw 'Release archive verification failed; installer assets were not created' }
+} finally {
+    Pop-Location
+}
 New-Item -ItemType Directory -Path $assets -Force | Out-Null
 $download=Join-Path $assets 'portscoop-windows-amd64.zip'
 Copy-Item -LiteralPath $archive -Destination $download
