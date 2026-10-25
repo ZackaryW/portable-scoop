@@ -4,4 +4,4 @@ import (
 	"encoding/json"
 )
 
-func extractDir(_ Manifest, raw json.RawMessage) (result, error) { return relativeList(raw, true) }
+func extractDir(_ Manifest, raw json.RawMessage) (result, error) { return extractionField(raw) }

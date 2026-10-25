@@ -163,6 +163,7 @@ type PlannedPackage struct {
 	Manifest  Manifest
 	Decisions []compatibility.Decision
 	Actions   []compatibility.Action
+	Downloads []compatibility.Download
 }
 
 // Preflight resolves and validates the complete dependency closure before the
@@ -222,7 +223,7 @@ func Preflight(names []string, load ManifestLoader) ([]PlannedPackage, error) {
 			}
 		}
 		states[key] = 2
-		plan = append(plan, PlannedPackage{Name: name, Manifest: manifest, Decisions: compiled.Decisions, Actions: compiled.Actions})
+		plan = append(plan, PlannedPackage{Name: name, Manifest: manifest, Decisions: compiled.Decisions, Actions: compiled.Actions, Downloads: compiled.Downloads})
 		return nil
 	}
 	for _, name := range names {

@@ -18,6 +18,7 @@ type FrozenManifest struct {
 	Manifest  Manifest                 `json:"manifest"`
 	Decisions []compatibility.Decision `json:"decisions,omitempty"`
 	Actions   []compatibility.Action   `json:"actions,omitempty"`
+	Downloads []compatibility.Download `json:"downloads,omitempty"`
 }
 
 // containedFile resolves reparse points before reading managed metadata.
@@ -226,7 +227,7 @@ func Plan(paths environment.Paths, op Operation) (map[string]FrozenManifest, err
 	var closure []string
 	for _, item := range plan {
 		closure = append(closure, item.Name)
-		result[appName(item.Name)] = FrozenManifest{Bucket: source.buckets[strings.ToLower(item.Name)], Manifest: item.Manifest, Decisions: item.Decisions, Actions: item.Actions}
+		result[appName(item.Name)] = FrozenManifest{Bucket: source.buckets[strings.ToLower(item.Name)], Manifest: item.Manifest, Decisions: item.Decisions, Actions: item.Actions, Downloads: item.Downloads}
 	}
 	if err := validateSaved(paths, closure); err != nil {
 		return nil, err

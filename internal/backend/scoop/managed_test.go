@@ -130,6 +130,9 @@ func TestManagedFreezesPreflightedDependencyClosure(t *testing.T) {
 	if len(frozen) != 2 || string(frozen["app"].Manifest["version"]) != `"1.0"` || frozen["dep"].Bucket != "main" {
 		t.Fatalf("incorrect frozen closure: %+v", frozen)
 	}
+	if ds := frozen["app"].Downloads; len(ds) != 1 || ds[0].Name != "app.zip" || ds[0].URL != "https://example.test/app.zip" || ds[0].Hash != strings.Repeat("a", 64) {
+		t.Fatalf("download plan not frozen: %+v", ds)
+	}
 	files, _ := filepath.Glob(filepath.Join(local.Paths.Temp, "portscoop-request-*"))
 	if len(files) != 0 {
 		t.Fatal("managed request leaked")

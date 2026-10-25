@@ -20,6 +20,7 @@ $patchAst.FindAll({ param($node) $node -is [Management.Automation.Language.Funct
 $sites = @{
     'lib/core.ps1' = @('is_scoop_outdated','Get-DefaultArchitecture','Test-HelperInstalled','Get-HelperPath','Invoke-Git')
     'lib/install.ps1' = @('create_shims','Invoke-HookScript','Invoke-Installer')
+    'lib/download.ps1' = @('Invoke-ScoopDownload')
     'lib/shortcuts.ps1' = @('create_startmenu_shortcuts','rm_startmenu_shortcuts','shortcut_folder','startmenu_shortcut')
     'lib/psmodules.ps1' = @('install_psmodule','uninstall_psmodule','ensure_in_psmodulepath')
     'lib/commands.ps1' = @('command_path')
@@ -57,6 +58,6 @@ Get-ChildItem -LiteralPath $engine -File -Recurse | Sort-Object FullName | ForEa
 Get-ChildItem -LiteralPath $adapter -File | Sort-Object FullName | ForEach-Object {
     $artifacts[".portscoop/backend/$($_.Name)"] = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
 }
-$metadata = @{ schema_version=1; protocol_major=1; upstream_revision=$pin.upstream_revision; patch_revision='portable-fields-v1.0'; artifacts=$artifacts } | ConvertTo-Json -Depth 5
+$metadata = @{ schema_version=1; protocol_major=1; upstream_revision=$pin.upstream_revision; patch_revision='portable-operations-v1.0'; artifacts=$artifacts } | ConvertTo-Json -Depth 5
 [IO.File]::WriteAllText((Join-Path $Destination 'backend.json'),$metadata,(New-Object Text.UTF8Encoding($false)))
 Write-Output $Destination

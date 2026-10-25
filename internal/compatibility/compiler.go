@@ -38,6 +38,7 @@ type Plan struct {
 	Manifest  Manifest   `json:"manifest"`
 	Decisions []Decision `json:"decisions"`
 	Actions   []Action   `json:"actions,omitempty"`
+	Downloads []Download `json:"downloads,omitempty"`
 }
 
 type result struct {
@@ -117,9 +118,18 @@ func Compile(input Manifest) (Plan, error) {
 			p.Manifest["bin"], _ = json.Marshal(merged)
 		}
 	}
+	if len(failures) == 0 {
+		var err error
+		p.Downloads, err = compileDownloads(p.Manifest)
+		if err != nil {
+			p.Decisions = append(p.Decisions, Decision{"url", Reject, err.Error()})
+			failures = append(failures, "url: "+err.Error())
+		}
+	}
 	sort.SliceStable(p.Decisions, func(i, j int) bool { return p.Decisions[i].Field < p.Decisions[j].Field })
 	if len(failures) != 0 {
 		p.Manifest, p.Actions = nil, nil
+		p.Downloads = nil
 		return p, fmt.Errorf("%s: %s", Version, strings.Join(failures, "; "))
 	}
 	return p, nil

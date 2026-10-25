@@ -66,6 +66,34 @@ function Invoke-HookScript {
     if ($actions.Count -ne 1) { throw 'Package hook has no unique approved action' }
     Invoke-PortscoopAction -Action $actions[0] -App $app -Version $Manifest.version -Directory $dir -PersistDirectory $persist_dir
 }
+function Invoke-ScoopDownload {
+    param($app, $version, $manifest, $bucket, $architecture, $dir, $use_cache = $true, $check_hash = $true)
+    if (-not $check_hash) { throw 'Download hash verification cannot be disabled' }
+    $entry = $portscoopRequest.manifests.PSObject.Properties | Where-Object { $_.Name -ieq $app } | Select-Object -First 1
+    if (-not $entry -or $entry.Value.manifest.version -cne $version -or
+        (@($entry.Value.manifest.url) -join "`n") -cne (@($manifest.url) -join "`n")) { throw 'Download does not match frozen manifest' }
+    $downloads = @($entry.Value.downloads)
+    if (-not $downloads.Count) { throw 'Missing frozen download plan' }
+    $root = [IO.Path]::GetFullPath($env:PORTSCOOP_ROOT)
+    $expected = Join-Path $root "scoop\apps\$app\$version"
+    if (-not ([IO.Path]::GetFullPath($dir)).Equals($expected,[StringComparison]::OrdinalIgnoreCase)) { throw 'Download directory differs from Store' }
+    foreach ($download in $downloads) {
+        $name = [string]$download.name
+        if (-not $name -or $name -ne [IO.Path]::GetFileName($name) -or $name.IndexOfAny([IO.Path]::GetInvalidFileNameChars()) -ge 0) { throw 'Invalid frozen download name' }
+        $uri = [Uri]$download.url
+        if ($uri.Scheme -notin @('http','https') -or $uri.Fragment -or $uri.UserInfo) { throw 'Invalid frozen network URL' }
+        $target = Join-Path $expected $name
+        Assert-PortscoopActionPath -Root $root -Path $target
+        # Explicit filename controls cache/display naming; Invoke-Download strips
+        # the fragment before sending the request. Query strings cannot rename it.
+        $url = $download.url + '#/' + $name
+        Invoke-CachedDownload $app $version $url $target $null $use_cache
+        $ok, $errorText = check_hash $target $download.hash $app
+        if (-not $ok) { throw "Download digest mismatch: $errorText" }
+    }
+    return @($downloads | ForEach-Object { [string]$_.name })
+}
+
 function Invoke-Installer {
     param([string]$Path, [string[]]$Name, [psobject]$Manifest, [Alias('Arch','Architecture')][string]$ProcessorArchitecture, [string]$AppName, [switch]$Global, [switch]$Uninstall)
     if ($Global -or (arch_specific 'installer' $Manifest $ProcessorArchitecture) -or (arch_specific 'uninstaller' $Manifest $ProcessorArchitecture)) {
