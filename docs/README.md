@@ -8,7 +8,7 @@
 | [Setup and multiple Stores](setup.md) | Prerequisites, first default Store, independent environments, matching distributions |
 | [Environment registrations](environments.md) | Aliases, identity, selection, and location hints |
 | [Application execution](application-execution.md) | `pspe`, argument forwarding, detached and terminal modes |
-| [Self-update](self-update.md) | Installation-local runtime updates and compatibility limits |
+| [Self-update](self-update.md) | Host and registered Store updates, status and recovery |
 | [Relocation](relocation.md) | Moving a Store, managed paths, and recovery |
 | [Manifest coverage](manifest-coverage.md) | Measured preflight acceptance, pinned snapshots, accepted names |
 | [v0.3.1 release notes](releases/0.3.1.md) | Compatibility expansion and the fresh-Store requirement |

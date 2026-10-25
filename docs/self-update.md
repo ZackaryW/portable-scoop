@@ -1,126 +1,77 @@
 # Updating Portscoop
 
-Use the management launcher in the installation you want to update:
+Run the Host launcher to update its runtime and **all registered Stores**:
 
 ```powershell
 .\psp.exe self-update --check
 .\psp.exe self-update
 .\psp.exe self-update --status
-# Select a published version explicitly:
-.\psp.exe self-update --version v0.2.2
 ```
 
-The version above illustrates the syntax; it is not a statement that the release
-has been published. `portscoop.exe` supports the same commands. `pspe.exe` runs
-applications; `psp update <app>` updates packages.
+The Host checks Stores even when its own version is already current. Duplicate
+aliases for one UUID are updated once. Offline, invalid, ambiguous or busy Stores
+are reported individually; other reachable Stores continue. Registrations and the
+default selection are preserved. Reconnect an offline Store and rerun the command.
 
-Self-update selects the folder containing the invoked management executable.
-Your working directory, registered default, and other Stores do not change that
-target. `--env` is rejected, including an explicitly empty value. To update a
-different Store, invoke its own `psp.exe` by full path.
+`portscoop.exe` accepts the same commands. `pspe.exe` launches applications;
+`psp update <app>` updates packages. Self-update does not upgrade installed apps.
 
-`--check` may be combined with `--version`. It reads release metadata without
-downloading candidate code, creating update ownership, or changing your files.
-Availability does not establish compatibility with a Store's retained backend.
-`--status` and `--recover` cannot be combined with each other, `--check`, or
-`--version`. Known downgrades are rejected. Automatic selection treats an equal
-or newer installed semantic version as current; an uncomparable development
-build requires an explicit published target.
+## Scope and preservation
 
-## Ownership and replacement scope
+Host-managed Store updates replace all three launchers and their inventory-owned
+backend together. Store UUIDs, apps, shims, buckets, cache, configuration, portable
+path state and persisted data stay in place. Edited managed files, redirected
+paths, unsupported metadata and new-file collisions stop that Store's update.
 
-The first release implementing this command requires a complete deployment into
-an empty folder. An older executable cannot run a command it does not contain.
-The internet installer still refuses non-empty destinations; it is not an
-in-place updater. Keep older Stores separately when their data is needed.
+Invoking a Store's own `psp.exe` directly updates only that Store's launchers when
+the candidate supports its retained backend. For a backend upgrade, register the
+Store with a current Host and run that Host's `self-update`. Your working directory
+does not select the update target; `--env` is rejected.
 
-The distribution contains an inventoried `runtime-update.json` descriptor. Hosts
-retain the complete `release.json` source inventory and use `.portscoop-host/`
-for their identity and update controls. That namespace does not identify a Store.
-Store initialization writes `.portscoop/state/runtime.json`, binding its UUID,
-version, and all three launcher hashes. Unknown or edited ownership must be
-inspected; self-update does not adopt arbitrary executables or reconstruct an
-inventory by guessing.
+When upgrading from a Host version that predates registered Store updates, finish
+that Host update first, then rerun `self-update` through the updated Host.
 
-A Host update replaces its owned distribution, including the source backend and
-release inventory used to create future Stores. It preserves the `store` child,
-registrations, default selection, persistent environment, and unrelated files.
-New-file collisions or changes to owned files stop preparation. Source copying
-for Store creation excludes Host update controls and unrelated files.
+## Versions and outcomes
 
-A Store update replaces only `portscoop.exe`, `psp.exe`, `pspe.exe`, and its runtime
-receipt. Its UUID, backend, packages, shims, buckets, cache, configuration, path
-state, and persisted data remain in place. The candidate must explicitly support
-the retained backend contract. Otherwise initialize a fresh Store from the new
-complete release. Self-update does not migrate Store formats or promise backward
-compatibility. Updating a Host does not update its default Store.
+Use `--version <tag>` to select a published release explicitly; it also works with
+`--check`. One invocation pins one release for every target. Newer installations
+are never downgraded. Development versions require an explicit target.
 
-## Downloads and completion
+`--check` reports availability without downloading payloads or changing files.
+It does not establish payload compatibility. `--status` and `--recover` include
+registered Stores when invoked through a Host; they cannot be combined with
+`--check`, `--version` or each other.
 
-Discovery uses the official `ZackaryW/portable-scoop` GitHub release API. Downloads
-are pinned to one resolved tag and the Windows amd64 ZIP/checksum asset names.
-HTTPS redirects are restricted to GitHub release infrastructure, with response,
-time, entry-count, and expanded-size bounds. Verification covers the archive
-SHA-256, safe extraction paths, complete inventory, descriptor, identical
-management binaries, and all three launchers. Checksums share the publisher's
-HTTPS trust model; they are not independent release signatures. Semantic version
-ordering uses [Go's semver package](https://pkg.go.dev/golang.org/x/mod/semver).
-
-Staging and backups live in a protected current-user-only transaction directory
-on the installation's volume. A verified copy of the current management runtime
-acts as the worker. Downloaded candidate executables are not run to perform the
-update. The worker uses NUL streams and must escape external job restrictions
-without changing those restrictions. A restrictive terminal or automation job
-can reject this handoff; retry from an ordinary Windows terminal after inspecting
-the reported status.
-
-The invoking launcher reports **accepted**, then exits. This does not mean the
-update finished. The worker waits up to 30 seconds for that exact process to exit,
-then obtains its own update ownership, exclusive runtime lease, and (for a Store)
-operation lock. Coordination waits are bounded at five seconds; startup handshake
-waits are bounded at 15 seconds. Existing commands may finish; unrelated processes
-are never force-terminated. Application preparation releases the Store mutation
-lock after process creation. A foreground `pspe` runtime retains its runtime-use
-lease until it exits, so it can delay launcher replacement without blocking
-ordinary package operations.
-
-New commands encountering pending state report the transaction and recovery
-instructions before using mutable runtime files. `--status` and `--recover`
-remain reachable. An uncertain acknowledgement retains the transaction; it never
-automatically starts another worker.
+Store results report completed replacement. The Host's **accepted** message means
+its worker will finish after the launcher exits; inspect `--status` afterward.
+Updates use verified archive checksums and inventories, private staging, backups
+and bounded runtime/package locks. Downloaded candidate executables are not run
+to perform replacement. Unrelated processes are never forcibly terminated.
 
 | Outcome | Exit code |
 | --- | --- |
-| Check, already current, accepted handoff, absent/completed status | 0 |
-| Pending status | 3 |
-| Failure, uncertain handoff, interrupted/recovery-required status | 2 |
-| Cancellation before accepted handoff | 130 |
+| Check, current, completed Store update, accepted Host handoff | 0 |
+| Status with active pending work and no failures | 3 |
+| Failed, offline, invalid, uncertain or recovery-required target | 2 |
+| Cancellation | 130 |
+
+A partial result lists each target separately. A failed Store does not undo other
+successful Store updates. Inspect the reported location and UUID when resolving
+stale registrations; the updater does not remove or repair them automatically.
 
 ## Recovery
 
 ```powershell
-& 'F:\portable\work\psp.exe' self-update --status
-& 'F:\portable\work\psp.exe' self-update --recover
+.\psp.exe self-update --status
+.\psp.exe self-update --recover
 ```
 
-Recovery restores the recorded previous runtime and reports that restoration as
-a failed update, not as a successful upgrade. It validates the same identity,
-relative operation set, staged source, and backups. It refuses damaged metadata,
-unknown paths, redirected locations, or changed user files. It does not select
-another installation if the recorded volume is absent. Reconnect interrupted
-media at the recorded location before recovery; moving an unfinished transaction
-is unsupported.
+Recovery restores each recorded previous runtime, including its backend where
+applicable. It does not retry an upgrade or modify apps. A live transaction owner,
+damaged backups or changed identity prevents recovery. Reconnect interrupted
+media at its recorded location before recovering.
 
-If the public launcher files are unavailable, run the retained `worker.exe`
-inside the reported transaction folder with `__portscoop_update_recover` followed
-by that exact absolute transaction folder. This private entry point only accepts
-its own recorded transaction; it cannot target an arbitrary directory. Inspect
-`journal.json` and the final `result.json` for the outcome. Backups and staged
-helpers remain for inspection after completion or restoration; the updater does
-not recursively delete installed directories. File-use failures trigger rollback
-where possible and retain recovery-required state otherwise.
-
-This implementation is not runtime-qualified. Automated tests, test authoring,
-and disposable-VM qualification were deferred for this change. Compilation,
-artifact inspection, and source review do not establish replacement or recovery
-behavior on a live installation.
+If public launchers are damaged, run the retained `worker.exe` in the reported
+transaction folder with `__portscoop_update_recover` and that exact absolute
+transaction folder. This helper only accepts its own verified transaction.
+Backups and helpers remain available after completion or restoration.

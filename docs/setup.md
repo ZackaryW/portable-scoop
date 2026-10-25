@@ -83,9 +83,10 @@ of central unsetup. No ordinary-Scoop uninstaller is involved.
 
 Portscoop does not guarantee backward compatibility with older releases or Store
 formats. A breaking release may require a fresh Store initialized from its complete
-verified distribution. Legacy support, migration, and in-place downgrade are not
-release requirements. This release requires schema/protocol 1 and backend patch
-`portable-fields-v1.0`; mismatched launchers and backends fail verification.
+verified distribution. Schema-1 managed backends can be upgraded through a current Host; arbitrary
+Store format migrations and in-place downgrades are unsupported. The current
+backend patch is `portable-operations-v1.0`; mismatched launchers and backends
+fail verification.
 
 Retain the old Store separately if its packages or persisted data are still needed.
 Returning to an earlier release means using its matching Store, not replacing
@@ -99,10 +100,9 @@ The fixture server, generated manifests, and logs remain in its guest test folde
 for inspection; it is not a script to run against a normal user's environment.
 # Deploying management and execution launchers
 
-See [Updating Portscoop](self-update.md) for installation-local `psp self-update`,
-ownership requirements, compatible launcher updates, and recovery. Older releases
-without the command need a fresh complete deployment first. The updater is not
-runtime-qualified yet.
+See [Updating Portscoop](self-update.md) for Host-wide registered Store maintenance, direct Store `psp self-update`,
+ownership requirements, managed backend updates, and recovery. Older releases
+without the command need a fresh complete Host deployment first.
 
 Releases contain three launchers: identical management executables
 `portscoop.exe`/`psp.exe`, and the separate `pspe.exe` execution executable. New
@@ -113,7 +113,7 @@ individual Store shim directories are not added.
 Deploy a complete verified release into an empty folder. For a breaking release,
 initialize a fresh Store and register/select it with that release's Host. Reinstall
 supported applications there. Keep the prior Store separate for any data you need
-to recover; there is no automatic migration of its internal state.
+to recover; unsupported Store formats are not migrated automatically.
 
 Missing execution support or a backend revision mismatch is a deployment error.
 Do not copy only the new `pspe.exe` or management executables into an old Store as

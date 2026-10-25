@@ -10,7 +10,7 @@ import (
 )
 
 func normalize(v string) string { return "v" + strings.TrimPrefix(v, "v") }
-func (s Service) Run(ctx context.Context, exe string, o Options) (Result, error) {
+func validateOptions(o Options) error {
 	n := 0
 	for _, v := range []bool{o.Check, o.Status, o.Recover} {
 		if v {
@@ -18,11 +18,20 @@ func (s Service) Run(ctx context.Context, exe string, o Options) (Result, error)
 		}
 	}
 	if n > 1 || ((o.Status || o.Recover) && o.Version != "") {
-		return Result{}, fmt.Errorf("combine --version only with an update or --check")
+		return fmt.Errorf("combine --version only with an update or --check")
+	}
+	return nil
+}
+func (s Service) Run(ctx context.Context, exe string, o Options) (Result, error) {
+	if err := validateOptions(o); err != nil {
+		return Result{}, err
 	}
 	t, err := s.Files.Select(exe, !o.Status && !o.Recover)
 	if err != nil {
 		return Result{}, err
+	}
+	if s.selectedID != "" && (t.Kind != "store" || t.ID != s.selectedID) {
+		return Result{}, fmt.Errorf("registered Store identity changed")
 	}
 	if o.Status {
 		return s.Files.Status(t)
@@ -31,6 +40,9 @@ func (s Service) Run(ctx context.Context, exe string, o Options) (Result, error)
 		tx, err := s.Files.Load(t)
 		if err != nil {
 			return Result{}, err
+		}
+		if s.controller != nil {
+			return commitStore(ctx, tx, true)
 		}
 		// Worker serializes recovery and validates backups before any mutation.
 		return s.Worker.Handoff(ctx, tx, true)
@@ -87,6 +99,7 @@ func (s Service) Run(ctx context.Context, exe string, o Options) (Result, error)
 	if err != nil {
 		return Result{}, err
 	}
+	tx.Controller = s.controller
 	published := false
 	defer func() {
 		if !published {
@@ -103,6 +116,13 @@ func (s Service) Run(ctx context.Context, exe string, o Options) (Result, error)
 		return Result{}, err
 	}
 	published = true
+	if s.controller != nil {
+		// Pending now gates new users. Release preparation leases before taking
+		// the exclusive commit leases, without waiting for this Host to exit.
+		use.Close()
+		owner.Close()
+		return commitStore(ctx, tx, false)
+	}
 	result, err := s.Worker.Handoff(ctx, tx, false)
 	if err != nil {
 		// Handoff errors are returned only before commit permission is accepted.

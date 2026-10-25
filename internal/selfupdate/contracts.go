@@ -58,12 +58,14 @@ type Storage interface {
 	Abandon(*Transaction, error) error
 }
 type Service struct {
-	Discovery Discovery
-	Downloads Downloader
-	Files     Storage
-	Clock     Clock
-	Locks     Locker
-	Worker    Worker
+	Discovery  Discovery
+	Downloads  Downloader
+	Files      Storage
+	Clock      Clock
+	Locks      Locker
+	Worker     Worker
+	controller *runtimeinstall.Target
+	selectedID string
 }
 type Operation struct {
 	Path string `json:"path"`
@@ -96,5 +98,5 @@ type Journal struct {
 
 func Default() Service {
 	net := NewGitHub()
-	return Service{net, net, Disk{}, realClock{}, NativeLocker{}, WindowsWorker{}}
+	return Service{Discovery: net, Downloads: net, Files: Disk{}, Clock: realClock{}, Locks: NativeLocker{}, Worker: WindowsWorker{}}
 }
