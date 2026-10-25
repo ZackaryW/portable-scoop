@@ -12,8 +12,15 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 Invoke-RestMethod -Uri https://raw.githubusercontent.com/ZackaryW/portable-scoop/main/get.ps1 | Invoke-Expression
 ```
 
-The wizard asks for **Host** or **Store** and a destination folder. Host is the
-central launcher: it finds registered stores and delegates commands to them.
+First create and enter the empty folder where you want Portscoop to live. The
+wizard asks for **Host** or **Store**, then shows your **current folder** as the
+destination. Press Enter to install directly there, or type another folder.
+Both modes use this default; setup does not select AppData or add a subfolder.
+For example, run `mkdir F:\Portable\Work`, then `cd F:\Portable\Work` before
+the download command to install a Store there.
+
+Host is the central launcher: it finds registered stores and delegates commands
+to them.
 Store is an independent portable installation containing its own packages and
 state. Install Host once and repeat Store setup for each independent environment.
 Choose empty folders; existing files are never overwritten by this installer.
@@ -42,7 +49,9 @@ psp --env personal list
 In scripted Host setup, PATH changes require `-AddToPath`. `-NoPath` also skips
 the interactive PATH question. Store setup can explicitly register itself with
 `-RegisterAs work -SetDefault`; registration is never implicit. `-SetDefault`
-requires `-RegisterAs`. `-NonInteractive` requires both mode and destination.
+requires `-RegisterAs`. `-NonInteractive` requires a mode; omitting `-Destination`
+installs directly in the current folder without a destination prompt. Relative
+destinations, including `-Destination .`, resolve from the current folder.
 
 To select a release, add `-Version 0.1.0` (substitute a published version).
 This downloads the worker script from tag `v0.1.0` and that release's assets.

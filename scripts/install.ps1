@@ -20,20 +20,22 @@ if ($RegisterAs -and $RegisterAs -notmatch '^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$') {
 if ($Version -and $Version -notmatch '^v?[0-9][0-9A-Za-z._+-]*$') { throw 'Invalid release version' }
 $wizard=-not $Mode
 if ($wizard) {
-    if ($NonInteractive) { throw 'NonInteractive installation requires Mode and Destination' }
+    if ($NonInteractive) { throw 'NonInteractive installation requires Mode' }
     Write-Host 'Portscoop setup' -ForegroundColor Cyan
     Write-Host '  1. Host  - central launcher that finds registered portable stores'
     Write-Host '  2. Store - independent portable packages and state'
+    Write-Host 'Both modes default to installing in your current folder.'
     do { $answer=Read-Host 'Choose Host or Store [1/2]' } until ($answer -in @('1','2','Host','Store'))
     $Mode=if($answer -in @('1','Host')){'Host'}else{'Store'}
 }
 if ($Mode -eq 'Host' -and ($RegisterAs -or $SetDefault -or $Name)) { throw 'Name and registration options apply only to Store setup' }
 if ($Mode -eq 'Store' -and $AddToPath) { throw 'Store setup does not add portable paths to the host PATH' }
 if (-not $Destination) {
-    if ($NonInteractive) { throw 'NonInteractive installation requires Destination' }
-    $default=if($Mode -eq 'Host'){Join-Path $env:LOCALAPPDATA 'Programs\portscoop'}else{Join-Path (Get-Location).ProviderPath 'portscoop-store'}
-    $answer=Read-Host "Destination folder [$default]"
-    $Destination=if([string]::IsNullOrWhiteSpace($answer)){$default}else{$answer}
+    $default=(Get-Location).ProviderPath
+    if ($NonInteractive) { $Destination=$default } else {
+        $answer=Read-Host "Destination folder (Enter = current folder) [$default]"
+        $Destination=if([string]::IsNullOrWhiteSpace($answer)){$default}else{$answer}
+    }
 }
 $Destination=$ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Destination)
 $Destination=[IO.Path]::GetFullPath($Destination).TrimEnd('\','/')
@@ -58,7 +60,7 @@ try {
     try{$locked=$mutex.WaitOne(0)}catch [Threading.AbandonedMutexException]{$locked=$true}
     if(-not$locked){throw 'Another installer is already using this destination'}
     if(Test-Path -LiteralPath $Destination){
-        if(-not(Test-Path -LiteralPath $Destination -PathType Container)-or@(Get-ChildItem -LiteralPath $Destination -Force).Count){throw 'Destination must be empty; existing files were preserved'}
+        if(-not(Test-Path -LiteralPath $Destination -PathType Container)-or@(Get-ChildItem -LiteralPath $Destination -Force).Count){throw "Destination must be empty: $Destination. Create and enter an empty folder, or supply -Destination with an empty folder. Existing files were preserved."}
     }
     [Net.ServicePointManager]::SecurityProtocol=$previousProtocol -bor [Net.SecurityProtocolType]::Tls12
     $base='https://github.com/ZackaryW/portable-scoop/releases/latest/download'

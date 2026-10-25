@@ -13,6 +13,7 @@ $stub=@'
 [CmdletBinding()]
 param([string]$Mode,[string]$Destination,[string]$Name,[switch]$AddToPath)
 $ErrorActionPreference='Stop'
+if(-not$Destination.StartsWith(($env:PORTSCOOP_TEST_ROOT.TrimEnd('\')+'\'),[StringComparison]::OrdinalIgnoreCase)){throw 'Test setup destination escaped fixture root'}
 New-Item -ItemType Directory -Path $Destination -Force|Out-Null
 $receipt=@{mode=$Mode;destination=$Destination;name=$Name;add_to_path=[bool]$AddToPath}
 [IO.File]::WriteAllText($env:PORTSCOOP_TEST_RECEIPT,($receipt|ConvertTo-Json),(New-Object Text.UTF8Encoding($false)))
@@ -21,7 +22,7 @@ $receipt=@{mode=$Mode;destination=$Destination;name=$Name;add_to_path=[bool]$Add
 foreach($file in @('portscoop.exe','psp.exe','release.json','backend\backend.json')){[IO.File]::WriteAllText((Join-Path $payload $file),'fixture')}
 $archive=Join-Path $root 'fixture.zip'
 Compress-Archive -Path "$payload\*" -DestinationPath $archive
-$global:PortscoopInstallerTest=@{archive=$archive;checksum=$null;calls=(New-Object 'Collections.Generic.List[string]');fail=$false;answers=(New-Object 'Collections.Generic.Queue[string]')}
+$global:PortscoopInstallerTest=@{archive=$archive;checksum=$null;calls=(New-Object 'Collections.Generic.List[string]');fail=$false;answers=(New-Object 'Collections.Generic.Queue[string]');prompts=(New-Object 'Collections.Generic.List[string]')}
 function global:Invoke-RestMethod {
     param([string]$Uri,[int]$TimeoutSec)
     $global:PortscoopInstallerTest.calls.Add($Uri)
@@ -41,6 +42,7 @@ function global:Invoke-WebRequest {
 }
 function global:Read-Host {
     param([string]$Prompt)
+    $global:PortscoopInstallerTest.prompts.Add($Prompt)
     if(-not$global:PortscoopInstallerTest.answers.Count){throw "Unexpected prompt: $Prompt"}
     return $global:PortscoopInstallerTest.answers.Dequeue()
 }
@@ -52,9 +54,11 @@ function Expect-Failure([scriptblock]$Action,[string]$Pattern){
 }
 $originalPath=$env:PATH
 $originalReceipt=$env:PORTSCOOP_TEST_RECEIPT
+$originalTestRoot=$env:PORTSCOOP_TEST_ROOT
 $originalProtocol=[Net.ServicePointManager]::SecurityProtocol
 $passed=New-Object 'Collections.Generic.List[string]'
 try {
+    $env:PORTSCOOP_TEST_ROOT=$root
     $env:PORTSCOOP_TEST_RECEIPT=Join-Path $root 'receipt.json'
     $destination=Join-Path $root 'store (work) & data'
     $displayName='Work '+[char]0x03c0+' "quoted"'
@@ -85,11 +89,43 @@ try {
     Assert ($global:PortscoopInstallerTest.answers.Count-eq 0) 'Wizard did not consume expected choices'
     $passed.Add('Invoke-Expression entry and interactive Store selection')
 
+    foreach($setupMode in @('Host','Store')){
+        $folder=Join-Path $root ('current folder '+$setupMode)
+        New-Item -ItemType Directory -Path $folder|Out-Null
+        Push-Location -LiteralPath $folder
+        try{
+            $expected=(Get-Location).ProviderPath
+            $choice=if($setupMode-eq'Host'){'1'}else{'2'}
+            $lastAnswer=if($setupMode-eq'Host'){'n'}else{''}
+            foreach($answer in @($choice,'',$lastAnswer)){$global:PortscoopInstallerTest.answers.Enqueue($answer)}
+            & {Invoke-Expression ([IO.File]::ReadAllText($entry))}
+            $receipt=Get-Content -LiteralPath $env:PORTSCOOP_TEST_RECEIPT -Raw|ConvertFrom-Json
+            $expectedMode=if($setupMode-eq'Host'){'Central'}else{'Portable'}
+            Assert ($receipt.destination-ceq$expected-and$receipt.mode-eq$expectedMode-and-not$receipt.add_to_path) ($setupMode+' wizard did not install directly in CWD')
+            Assert (@($global:PortscoopInstallerTest.prompts|Where-Object {$_-eq("Destination folder (Enter = current folder) [$expected]")}).Count-eq 1) 'Destination prompt did not explain and show CWD'
+            Assert ($global:PortscoopInstallerTest.answers.Count-eq 0) 'Unexpected wizard questions'
+            Assert ($env:PATH-ceq$originalPath) 'Current-folder setup changed caller PATH without permission'
+        }finally{Pop-Location}
+
+        $folder=Join-Path $root ('scripted current folder '+$setupMode)
+        New-Item -ItemType Directory -Path $folder|Out-Null
+        Push-Location -LiteralPath $folder
+        try{
+            $expected=(Get-Location).ProviderPath
+            & $entry -Mode $setupMode -NonInteractive
+            $receipt=Get-Content -LiteralPath $env:PORTSCOOP_TEST_RECEIPT -Raw|ConvertFrom-Json
+            Assert ($receipt.destination-ceq$expected-and$receipt.mode-eq$expectedMode) ($setupMode+' scripted setup did not default to CWD')
+        }finally{Pop-Location}
+    }
+    $passed.Add('Host and Store wizard Enter defaults to exact CWD; scripted omission also uses CWD')
+
     $destination=Join-Path $root 'existing'
     New-Item -ItemType Directory -Path $destination|Out-Null
     [IO.File]::WriteAllText((Join-Path $destination 'sentinel'),'preserve')
     $count=$global:PortscoopInstallerTest.calls.Count
     Expect-Failure {& $worker -Mode Store -Destination $destination -NonInteractive} 'empty'
+    Push-Location -LiteralPath $destination
+    try{Expect-Failure {& $worker -Mode Store -NonInteractive} 'empty'}finally{Pop-Location}
     Assert ($global:PortscoopInstallerTest.calls.Count-eq$count) 'Existing destination triggered downloads'
     Assert ([IO.File]::ReadAllText((Join-Path $destination 'sentinel'))-ceq'preserve') 'Existing data changed'
     $passed.Add('non-empty destination rejected before downloads')
@@ -124,7 +160,7 @@ try {
     $passed.Add('mode-specific options and unsafe versions rejected')
     [pscustomobject]@{status='passed';checks=@($passed)}|ConvertTo-Json
 } finally {
-    $env:PATH=$originalPath;$env:PORTSCOOP_TEST_RECEIPT=$originalReceipt
+    $env:PATH=$originalPath;$env:PORTSCOOP_TEST_RECEIPT=$originalReceipt;$env:PORTSCOOP_TEST_ROOT=$originalTestRoot
     [Net.ServicePointManager]::SecurityProtocol=$originalProtocol
     Remove-Item Function:\Invoke-RestMethod,Function:\Invoke-WebRequest,Function:\Read-Host -ErrorAction SilentlyContinue
     Remove-Variable PortscoopInstallerTest -Scope Global -ErrorAction SilentlyContinue

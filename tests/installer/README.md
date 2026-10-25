@@ -10,7 +10,10 @@ These checks replace network calls inside the test process and supply a minimal
 fixture ZIP whose setup script writes only a temporary receipt. They exercise
 the real entry and download/extraction scripts, including `Invoke-Expression`,
 version selection, option forwarding, checksum failure, existing destinations,
-and ZIP traversal rejection. No real Host PATH writes or Scoop operations run.
+and ZIP traversal rejection. Host and Store wizard defaults, as well as scripted
+omission of a destination, must install directly in the current folder. No real
+Host PATH writes or Scoop operations run. The fixture setup refuses destinations
+outside its temporary test root.
 
 `qualify-release.ps1` runs only in the disposable VMware Windows guest. Build a
 real release with `scripts/package.ps1`, then create a bundle ZIP containing:
@@ -52,6 +55,7 @@ After publication, `qualify-live.ps1` tests the actual GitHub endpoints in the
 disposable guest. Pass the guest path to `tests/backend/host-state.ps1` as
 `-Sentinel`, an output JSON path as `-Results`, and the published version as
 `-ReleaseVersion`. It automates console answers for the Host wizard while keeping
-all network cmdlets real, then installs a Store through the matching tag and
-checks central delegation. It restores the guest user PATH and retains installed
+all network cmdlets real. It accepts the current-folder defaults for both Host
+and Store, also installs a Store through the matching tag, and checks central
+delegation. It restores the guest user PATH and retains installed
 files and a transcript. See [live release evidence](evidence/live-0.1.0.json).

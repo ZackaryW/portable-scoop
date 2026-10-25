@@ -20,16 +20,17 @@ try {
     $env:LOCALAPPDATA=Join-Path $root 'host-profile'
     New-Item -ItemType Directory -Path $env:LOCALAPPDATA|Out-Null
     $hostRoot=Join-Path $root 'Host Launcher'
+    New-Item -ItemType Directory -Path $hostRoot|Out-Null
     $global:PortscoopLiveAnswers=New-Object 'Collections.Generic.Queue[string]'
-    foreach($answer in @('1',$hostRoot,'y')){$global:PortscoopLiveAnswers.Enqueue($answer)}
+    foreach($answer in @('1','','y')){$global:PortscoopLiveAnswers.Enqueue($answer)}
     # Supply console answers only; download functions remain the real cmdlets.
     function global:Read-Host {
         param([string]$Prompt)
         if(-not$global:PortscoopLiveAnswers.Count){throw ('Unexpected wizard prompt: '+$Prompt)}
         $global:PortscoopLiveAnswers.Dequeue()
     }
-    & {Invoke-RestMethod -Uri https://raw.githubusercontent.com/ZackaryW/portable-scoop/main/get.ps1|Invoke-Expression}
-    Remove-Item Function:\Read-Host
+    Push-Location -LiteralPath $hostRoot
+    try{& {Invoke-RestMethod -Uri https://raw.githubusercontent.com/ZackaryW/portable-scoop/main/get.ps1|Invoke-Expression}}finally{Pop-Location}
     Assert ($global:PortscoopLiveAnswers.Count-eq 0) 'Wizard did not consume expected answers'
     $listing=psp env list|Out-String
     Assert ($LASTEXITCODE-eq 0-and$listing-match'ALIAS'-and$env:PATH.StartsWith($hostRoot+';')) 'Bare host launcher unavailable after live wizard'
@@ -39,7 +40,7 @@ try {
     Assert ([Environment]::GetEnvironmentVariable('PATH','User')-ceq$expectedPath) 'Unexpected user PATH modification'
     $versionOutput=psp --version|Out-String
     Assert ($LASTEXITCODE-eq 0-and$versionOutput.Contains($ReleaseVersion)) 'Latest release version differs'
-    $status.checks+='Live main/get.ps1 IEX wizard, latest ZIP/checksum, exact host PATH entry and immediate psp env list'
+    $status.checks+='Live Host wizard Enter installs directly in CWD; latest ZIP/checksum, exact host PATH entry and immediate psp env list'
 
     $store=Join-Path $root 'Store (portable)'
     $get=Invoke-RestMethod -Uri ('https://raw.githubusercontent.com/ZackaryW/portable-scoop/v'+$ReleaseVersion+'/get.ps1')
@@ -54,6 +55,25 @@ try {
     Assert ($LASTEXITCODE-eq 0-and$listing-match'work'-and$listing-match'available') 'Registered default unavailable'
     [IO.File]::WriteAllText((Join-Path $root 'env-list.txt'),$listing)
     $status.checks+='Live tagged entry/worker/release, Store initialization, explicit registration/default, direct execution and central delegation'
+
+    $cwdStore=Join-Path $root 'Current folder Store'
+    New-Item -ItemType Directory -Path $cwdStore|Out-Null
+    foreach($answer in @('2','','Live CWD')){$global:PortscoopLiveAnswers.Enqueue($answer)}
+    Push-Location -LiteralPath $cwdStore
+    try{
+        $getMain=Invoke-RestMethod -Uri https://raw.githubusercontent.com/ZackaryW/portable-scoop/main/get.ps1
+        & ([scriptblock]::Create($getMain)) -RegisterAs cwd
+    }finally{Pop-Location}
+    Assert ($global:PortscoopLiveAnswers.Count-eq 0) 'Store wizard did not consume expected answers'
+    Assert (Test-Path -LiteralPath (Join-Path $cwdStore '.portscoop\environment.json')) 'Store did not initialize directly in CWD'
+    Assert (-not(Test-Path -LiteralPath (Join-Path $env:LOCALAPPDATA 'Programs\portscoop'))) 'Default setup created an AppData deployment'
+    Assert ($env:PATH-ceq$hostPath) 'Current-folder Store modified caller PATH'
+    $output=psp --env cwd list|Out-String
+    Assert ($LASTEXITCODE-eq 1-and$output-match"There aren't any apps installed") 'Current-folder Store delegation failed'
+    $listing=psp env list|Out-String
+    Assert ($LASTEXITCODE-eq 0-and$listing-match'cwd'-and$listing-match'work') 'Both stores not listed'
+    [IO.File]::WriteAllText((Join-Path $root 'env-list.txt'),$listing)
+    $status.checks+='Live Store wizard Enter installs directly in CWD, no AppData deployment, caller PATH preserved and both independent stores registered'
     Assert ([Net.ServicePointManager]::SecurityProtocol-eq$originalProtocol) 'Installer changed TLS settings'
     $status.status='passed'
 }catch{$status.status='failed';$status.error=$_.Exception.ToString()}

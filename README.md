@@ -22,9 +22,11 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 Invoke-RestMethod -Uri https://raw.githubusercontent.com/ZackaryW/portable-scoop/main/get.ps1 | Invoke-Expression
 ```
 
-Choose **Host** for a central launcher with optional user PATH integration, or
-**Store** for an independent portable environment. Choose an empty destination
-folder; Store initialization requires local NTFS. No Go compiler or existing
+Create and enter an empty folder before running the command. Choose **Host** for
+a central launcher with optional user PATH integration, or **Store** for an
+independent portable environment. Press Enter at the destination prompt to
+install directly in your current folder. Store initialization requires local
+NTFS. No Go compiler or existing
 Scoop installation is required. Repeat Store setup for additional environments.
 See [internet installation](docs/internet-install.md) for scripted destinations,
 version selection, and registration with a Host.
