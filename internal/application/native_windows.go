@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -69,7 +71,8 @@ func (Native) Start(ctx context.Context, spec Command) (Process, error) {
 		}
 		// nil streams deliberately map to NUL, never a launcher terminal/pipe.
 	} else {
-		cmd.Stdin, cmd.Stdout, cmd.Stderr = spec.Streams.In, spec.Streams.Out, spec.Streams.Err
+		cmd.Stdin = spec.Streams.In
+		cmd.Stdout, cmd.Stderr = applicationOutput(spec.Streams.Out), applicationOutput(spec.Streams.Err)
 	}
 	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: flags, HideWindow: spec.HiddenConsole, CmdLine: spec.WindowsCommandLine}
 	p.command = cmd
@@ -101,6 +104,26 @@ func (Native) Start(ctx context.Context, spec Command) (Process, error) {
 		return nil, err
 	}
 	return p, nil
+}
+
+type forwardedOutput struct{ io.Writer }
+
+func applicationOutput(writer io.Writer) io.Writer {
+	if file, ok := writer.(*os.File); ok {
+		var mode uint32
+		if windows.GetConsoleMode(windows.Handle(file.Fd()), &mode) == nil {
+			return writer
+		}
+		kind, err := windows.GetFileType(windows.Handle(file.Fd()))
+		if err == nil && kind == windows.FILE_TYPE_PIPE {
+			// Force exec.Cmd to own a forwarding pipe and its bounded drain.
+			// Passing the caller's pipe handle directly lets a surviving child
+			// keep the caller's pipeline open after both pspe helpers have exited.
+			return forwardedOutput{file}
+		}
+	}
+	// Console handles must remain consoles for interactive/TUI applications.
+	return writer
 }
 
 func setJobLimits(job windows.Handle, flags uint32) error {

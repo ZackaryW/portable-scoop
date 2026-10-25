@@ -218,6 +218,38 @@ func TestForegroundNormalLauncherPreservesChildAndBoundsDrain(t *testing.T) {
 	}
 }
 
+func TestForegroundChildCannotRetainCallersOutputPipe(t *testing.T) {
+	spec, dir := fixtureCommand(t, "launcher", Wait)
+	readSide, writeSide, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer readSide.Close()
+	defer writeSide.Close()
+	spec.Streams.Out = writeSide
+	p, err := (Native{}).Start(context.Background(), spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	child := waitPID(t, dir, "survivor")
+	cleanupApp(t, child)
+	code, err := p.Wait(context.Background())
+	if err != nil || code != 23 {
+		t.Fatalf("%d %v", code, err)
+	}
+	_ = writeSide.Close()
+	done := make(chan struct{})
+	go func() { _, _ = io.Copy(io.Discard, readSide); close(done) }()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("application descendant retained the caller's output pipe after launcher exit")
+	}
+	if !appAlive(child) {
+		t.Fatal("normal completion killed the child to release output")
+	}
+}
+
 func TestDetachedPendingAbortAndCommittedLifetime(t *testing.T) {
 	for _, commit := range []bool{false, true} {
 		t.Run(strconv.FormatBool(commit), func(t *testing.T) {

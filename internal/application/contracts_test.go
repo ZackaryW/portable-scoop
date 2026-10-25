@@ -13,6 +13,9 @@ func TestApplicationBoundaryExcludesPackageDispatch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if len(pkgs) == 0 {
+		t.Skip("source architecture check runs in the repository; standalone guest has no Go sources")
+	}
 	for _, pkg := range pkgs {
 		for _, file := range pkg.Files {
 			for _, imp := range file.Imports {

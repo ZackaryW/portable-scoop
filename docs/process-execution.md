@@ -56,6 +56,11 @@ the application session does not retain it and does not capture app edits into
 the ownership inventory. Other package operations may encounter normal Windows
 file-in-use errors while an application is open.
 
+Redirected output pipes are forwarded through helper-owned pipes with bounded
+draining after root exit. This prevents a surviving application child from
+retaining the caller's pipeline handle. Real console handles stay connected as
+console handles so interactive applications can use console APIs.
+
 Detached startup remains owned until a commit request completes. The Store then
 acknowledges committed handoff. Before commit, control failure/cancellation cleans
 up the pending application. After commit, the app survives helper completion and
