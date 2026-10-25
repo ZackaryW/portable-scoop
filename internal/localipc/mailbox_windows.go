@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -31,6 +32,28 @@ type Endpoint struct {
 }
 
 var directoryName = regexp.MustCompile(`^portscoop-execution-[0-9a-f]{64}$`)
+
+// Windows can briefly deny access while another process inspects a newly
+// published file. Retry only sharing/byte-range locks, within this operation's
+// deadline. This retries transport I/O, never an invocation or application.
+func retrySharing(ctx context.Context, action func() error) error {
+	ticker := time.NewTicker(10 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		err := action()
+		if !errors.Is(err, windows.ERROR_SHARING_VIOLATION) && !errors.Is(err, windows.ERROR_LOCK_VIOLATION) {
+			return err
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+		}
+	}
+}
 
 func currentSID() (*windows.SID, error) {
 	token, err := windows.OpenCurrentProcessToken()
@@ -146,7 +169,7 @@ func (e *Endpoint) Write(ctx context.Context, value any) error {
 	if err != nil {
 		return err
 	}
-	if err := os.Rename(file.Name(), path); err != nil {
+	if err := retrySharing(ctx, func() error { return os.Rename(file.Name(), path) }); err != nil {
 		return err
 	}
 	e.writeSequence++
@@ -161,17 +184,22 @@ func (e *Endpoint) Read(ctx context.Context, value any) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		info, err := os.Lstat(path)
+		var info os.FileInfo
+		err := retrySharing(ctx, func() error { var err error; info, err = os.Lstat(path); return err })
 		if err == nil {
 			if !info.Mode().IsRegular() || info.Size() > MaxMessage {
 				return fmt.Errorf("invalid execution transport message")
 			}
-			file, err := os.Open(path)
-			if err != nil {
+			var data []byte
+			err := retrySharing(ctx, func() error {
+				file, err := os.Open(path)
+				if err != nil {
+					return err
+				}
+				defer file.Close()
+				data, err = io.ReadAll(io.LimitReader(file, MaxMessage+1))
 				return err
-			}
-			data, err := io.ReadAll(io.LimitReader(file, MaxMessage+1))
-			_ = file.Close()
+			})
 			if err != nil {
 				return err
 			}
@@ -181,7 +209,7 @@ func (e *Endpoint) Read(ctx context.Context, value any) error {
 			if err := metadata.Decode(data, value); err != nil {
 				return fmt.Errorf("invalid execution message: %w", err)
 			}
-			if err := os.Remove(path); err != nil {
+			if err := retrySharing(ctx, func() error { return os.Remove(path) }); err != nil {
 				return err
 			}
 			e.readSequence++
@@ -205,15 +233,21 @@ func (e *Endpoint) Read(ctx context.Context, value any) error {
 }
 
 func (e *Endpoint) Close() error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
 	if e.owner {
 		// The exact absolute random directory was created by New and rechecked.
-		if err := validateDirectory(e.directory); err != nil {
-			if os.IsNotExist(err) {
-				return nil
+		return retrySharing(ctx, func() error {
+			if err := validateDirectory(e.directory); err != nil {
+				if os.IsNotExist(err) {
+					return nil
+				}
+				return err
 			}
-			return err
-		}
-		return os.RemoveAll(e.directory)
+			return os.RemoveAll(e.directory)
+		})
 	}
-	return os.WriteFile(filepath.Join(e.directory, e.send+".closed"), []byte("closed"), 0600)
+	return retrySharing(ctx, func() error {
+		return os.WriteFile(filepath.Join(e.directory, e.send+".closed"), []byte("closed"), 0600)
+	})
 }

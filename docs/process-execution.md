@@ -48,6 +48,9 @@ messages are strict bounded JSON (1 MiB), and startup negotiation is bounded to
 15 seconds. No network listener is used. Only an expected Store UUID, logical
 shim, mode, arguments, and caller directory cross this boundary. There is no raw
 executable, command string, environment override, or secondary Store selector.
+Transient Windows sharing/byte-range file locks retry only the control I/O within
+that deadline. Invalid messages and other I/O failures remain immediate errors;
+these retries never repeat application creation.
 
 The Store rechecks its identity under its operation lock, verifies the compatible
 managed backend, prepares relocation, validates its owned shim target, snapshots

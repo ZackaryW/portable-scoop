@@ -2,6 +2,16 @@ $ErrorActionPreference = 'Stop'
 $control = $env:PORTSCOOP_PS_CONTROL
 Remove-Item Env:\PORTSCOOP_PS_CONTROL -ErrorAction SilentlyContinue
 $deadline = [DateTime]::UtcNow.AddSeconds(15)
+function Invoke-ControlIO([scriptblock]$Action) {
+    while ($true) {
+        try { return (& $Action) } catch {
+            $code = $_.Exception.GetBaseException().HResult -band 65535
+            if ($code -notin 32, 33) { throw }
+            if ([DateTime]::UtcNow -ge $deadline) { throw 'PowerShell startup control file remained locked' }
+            Start-Sleep -Milliseconds 10
+        }
+    }
+}
 function Read-Control([int]$Sequence) {
     $path = Join-Path $control ('server-{0:d4}.json' -f $Sequence)
     while (-not [IO.File]::Exists($path)) {
@@ -9,15 +19,15 @@ function Read-Control([int]$Sequence) {
         Start-Sleep -Milliseconds 10
     }
     if ((Get-Item -LiteralPath $path).Length -gt 1048576) { throw 'PowerShell startup message exceeds size bound' }
-    $value = [IO.File]::ReadAllText($path, [Text.Encoding]::UTF8) | ConvertFrom-Json
-    [IO.File]::Delete($path)
+    $value = (Invoke-ControlIO { [IO.File]::ReadAllText($path, [Text.Encoding]::UTF8) }) | ConvertFrom-Json
+    Invoke-ControlIO { [IO.File]::Delete($path) }
     return $value
 }
 function Write-Control([int]$Sequence, $Value) {
     $path = Join-Path $control ('client-{0:d4}.json' -f $Sequence)
     $temporary = $path + '.tmp'
-    [IO.File]::WriteAllText($temporary, ($Value | ConvertTo-Json -Compress -Depth 8), [Text.UTF8Encoding]::new($false))
-    [IO.File]::Move($temporary, $path)
+    Invoke-ControlIO { [IO.File]::WriteAllText($temporary, ($Value | ConvertTo-Json -Compress -Depth 8), [Text.UTF8Encoding]::new($false)) }
+    Invoke-ControlIO { [IO.File]::Move($temporary, $path) }
 }
 
 try {

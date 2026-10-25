@@ -6,8 +6,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
+
+	"golang.org/x/sys/windows"
 
 	"portscoop/internal/testutil"
 )
@@ -53,6 +56,41 @@ func TestPrivateControlRoundTripAndCleanup(t *testing.T) {
 	}
 	if _, err := os.Stat(s.Directory()); !os.IsNotExist(err) {
 		t.Fatal("private transport retained", err)
+	}
+}
+
+func TestTransientSharingViolationDoesNotLoseAcknowledgement(t *testing.T) {
+	server, err := New(testutil.TempDir(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer server.Close()
+	client, err := Open(server.Directory())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	if err := server.Write(ctx, map[string]string{"state": "committed"}); err != nil {
+		t.Fatal(err)
+	}
+	path, _ := windows.UTF16PtrFromString(filepath.Join(server.Directory(), "server-0000.json"))
+	held, err := windows.CreateFile(path, windows.GENERIC_READ, 0, nil, windows.OPEN_EXISTING, windows.FILE_ATTRIBUTE_NORMAL, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var once sync.Once
+	unlock := func() { once.Do(func() { _ = windows.CloseHandle(held) }) }
+	defer unlock()
+	go func() { time.Sleep(60 * time.Millisecond); unlock() }()
+	var got struct {
+		State string `json:"state"`
+	}
+	if err := client.Read(ctx, &got); err != nil {
+		t.Fatal("transient message lock lost acknowledgement:", err)
+	}
+	if got.State != "committed" {
+		t.Fatal(got)
 	}
 }
 
