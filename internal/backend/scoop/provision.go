@@ -113,7 +113,8 @@ func verifyRelease(root string, allowDefaultStore bool) (Release, error) {
 type Initializer struct {
 	ReleaseRoot   string
 	Runner        runner.ProcessRunner
-	BeforePublish func() error // deterministic provisioning fault injection
+	BootstrapMain func(context.Context, environment.Paths) error // test acquisition boundary; nil uses pinned managed Git
+	BeforePublish func() error                                   // deterministic provisioning fault injection
 }
 
 func copyTree(source, destination string) error {
@@ -245,6 +246,13 @@ func (i Initializer) Init(ctx context.Context, root, name string) (environment.I
 	}
 	if err = CheckRuntime(ctx, paths, i.Runner); err != nil {
 		return id, err
+	}
+	bootstrap := i.BootstrapMain
+	if bootstrap == nil {
+		bootstrap = (Bootstrapper{}).ensureMain
+	}
+	if err = bootstrap(ctx, paths); err != nil {
+		return id, fmt.Errorf("Store bootstrap: %w", err)
 	}
 	if i.BeforePublish != nil {
 		if err = i.BeforePublish(); err != nil {

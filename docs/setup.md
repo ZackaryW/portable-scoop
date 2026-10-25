@@ -7,8 +7,7 @@ Extract a verified Windows x64 release archive. No Go compiler is needed on the
 target. The initial supported runtime is Windows PowerShell 5.1 FullLanguage on
 local NTFS. Initialization tests x64, locking, and junction support before making
 a root ready. PowerShell 7, UNC, FAT/exFAT, and arbitrary manifest scripts are not
-qualified. Git-backed bucket operations additionally require standalone Git at
-`%ProgramFiles%\Git\cmd\git.exe`.
+qualified. Each Store receives its own verified Git and full 7-Zip runtime tools.
 Managed bucket operations use private Git integration settings; public HTTP(S)
 and explicit local repositories are supported. User Git credential helpers,
 global config, hooks, and templates are not imported.
@@ -29,8 +28,15 @@ central executable by its full path.
 To create the first default Store automatically during central setup, add
 `-CreateDefaultStore`. This initializes the Host's `store` subfolder and selects
 its `default` registration. After Host-only setup, `psp env bootstrap` performs
-the same operation. Existing defaults are preserved. Package catalogs can then
-be added with `psp bucket add`.
+the same operation. Existing defaults are preserved. Main is prepared automatically;
+add other package catalogs with `psp bucket add extras`. Initial setup needs network
+access to acquire Main before the Store becomes ready.
+
+On an existing compatible Store, `psp env bootstrap` verifies managed tools and
+adds Main if absent. Use `psp --env work env bootstrap` to select a registered
+Store. Repeating it preserves the current Main checkout, including explicit
+bucket updates. A different Main source or altered runtime file is reported as
+a conflict. Upgrade older backends through a current Host first.
 
 Create two portable environments without changing host PATH or registrations:
 

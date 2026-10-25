@@ -19,7 +19,7 @@ default selection are preserved. Reconnect an offline Store and rerun the comman
 ## Scope and preservation
 
 Host-managed Store updates replace all three launchers and their inventory-owned
-backend together. Store UUIDs, apps, shims, buckets, cache, configuration, portable
+backend and private Git/7-Zip tools together. Store UUIDs, apps, shims, buckets, cache, configuration, portable
 path state and persisted data stay in place. Edited managed files, redirected
 paths, unsupported metadata and new-file collisions stop that Store's update.
 

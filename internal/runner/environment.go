@@ -132,6 +132,7 @@ func BuildEnvironment(local environment.Context, parent []string, files environm
 		}
 	}
 	values["GIT_CONFIG_NOSYSTEM"] = "1"
+	values["GIT_CONFIG_SYSTEM"] = "NUL"
 	values["GIT_CONFIG_GLOBAL"] = filepath.Join(local.Paths.State, "git-global.config")
 	values["GIT_TERMINAL_PROMPT"] = "0"
 	values["GIT_CEILING_DIRECTORIES"] = local.Paths.Root
@@ -140,6 +141,29 @@ func BuildEnvironment(local environment.Context, parent []string, files environm
 	values["GIT_CONFIG_VALUE_0"] = filepath.Join(local.Paths.State, "git-hooks")
 	values["GIT_CONFIG_KEY_1"] = "init.templateDir"
 	values["GIT_CONFIG_VALUE_1"] = filepath.Join(local.Paths.State, "git-templates")
+	return sortedEnvironment(values), nil
+}
+
+// GitEnvironment confines helper lookup and configuration for a native Git
+// invocation. The caller verifies the tool tree before calling this function.
+func GitEnvironment(local environment.Context, parent []string) ([]string, error) {
+	child, err := BuildEnvironment(local, parent, nil)
+	if err != nil {
+		return nil, err
+	}
+	values := map[string]string{}
+	for _, item := range child {
+		key, value, ok := splitEnvironment(item)
+		if ok {
+			values[key] = value
+		}
+	}
+	git := filepath.Join(local.Paths.Control, "tools", "git")
+	values["GIT_CONFIG_GLOBAL"] = "NUL"
+	values["GIT_EXEC_PATH"] = filepath.Join(git, "ucrt64", "bin")
+	values["HOME"] = filepath.Join(local.Paths.State, "git-home")
+	values["XDG_CONFIG_HOME"] = values["HOME"]
+	values["PATH"] = strings.Join([]string{filepath.Join(git, "cmd"), filepath.Join(git, "ucrt64", "bin"), filepath.Join(git, "usr", "bin"), filepath.Join(values["SYSTEMROOT"], "System32")}, ";")
 	return sortedEnvironment(values), nil
 }
 

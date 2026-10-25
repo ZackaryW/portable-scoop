@@ -108,13 +108,13 @@ func TestDocumentedManagementHelp(t *testing.T) {
 	}
 }
 
-func TestBootstrapRejectsPortableLauncherBeforeRegistryWrites(t *testing.T) {
+func TestBootstrapRejectsIncompletePortableRuntimeBeforeRegistryWrites(t *testing.T) {
 	root := testutil.NewRoot(t, "portable")
 	registryPath := filepath.Join(testutil.TempDir(t), "registry.json")
 	cmd := NewWithOptions("test", Options{RegistryPath: registryPath, ExecutablePath: filepath.Join(root.Path, "psp.exe"), Initializer: &scoop.Initializer{ReleaseRoot: root.Path}})
 	cmd.SetArgs([]string{"env", "bootstrap"})
-	if err := cmd.Execute(); err == nil || !strings.Contains(err.Error(), "Host launcher") {
-		t.Fatalf("portable launcher accepted Host bootstrap: %v", err)
+	if err := cmd.Execute(); err == nil || !strings.Contains(err.Error(), "backend") {
+		t.Fatalf("portable launcher accepted incomplete runtime: %v", err)
 	}
 	if _, err := os.Stat(registryPath); !os.IsNotExist(err) {
 		t.Fatal("rejected bootstrap wrote host registration")

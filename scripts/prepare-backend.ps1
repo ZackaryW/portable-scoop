@@ -48,7 +48,7 @@ $bucketFile=Join-Path $engine 'lib\buckets.ps1'
 $bucketText=[IO.File]::ReadAllText($bucketFile)
 $oldDiagnostic="Git is required for buckets. Run 'scoop install git' and try again."
 if (-not $bucketText.Contains($oldDiagnostic)){throw 'Git prerequisite diagnostic patch site changed'}
-$bucketText=$bucketText.Replace($oldDiagnostic,'Standalone Git is required at %ProgramFiles%\Git\cmd\git.exe for bucket operations.')
+$bucketText=$bucketText.Replace($oldDiagnostic,'Managed Store Git is unavailable; repair the Store runtime through its Host.')
 [IO.File]::WriteAllText($bucketFile,$bucketText,(New-Object Text.UTF8Encoding($false)))
 Copy-Item -LiteralPath (Join-Path $projectRoot 'backend\scoop\adapter\entry.ps1') -Destination $adapter
 Copy-Item -LiteralPath (Join-Path $projectRoot 'internal\runner\request-reader.ps1') -Destination $adapter

@@ -12,19 +12,31 @@ function Get-InstallationHelper {
 function Get-HelperPath {
     param([string]$Helper)
     if ($Helper -ine 'Git') { return $null }
-    # Git is an explicit standalone prerequisite for Git-backed buckets.
-    $git = Join-Path $env:ProgramFiles 'Git\cmd\git.exe'
+    # The launcher verifies the complete runtime-owned tool inventory.
+    $git = Join-Path $env:PORTSCOOP_ROOT '.portscoop\tools\git\cmd\git.exe'
     if (Test-Path -LiteralPath $git -PathType Leaf) { return $git }
     return $null
 }
 function Invoke-Git {
     param([Alias('PSPath','Path')][string]$WorkingDirectory,[Alias('Args')][string[]]$ArgumentList)
     $git=Get-HelperPath Git
-    if (-not $git) { throw 'Standalone Git is required at %ProgramFiles%\Git\cmd\git.exe' }
+    if (-not $git) { throw 'Managed Store Git is unavailable; repair the Store runtime through its Host' }
     if ($ArgumentList[0] -eq 'clone') { $ArgumentList=@('clone','--no-hardlinks')+@($ArgumentList|Select-Object -Skip 1) }
     if (-not $WorkingDirectory) { $WorkingDirectory=Join-Path $env:PORTSCOOP_ROOT 'scoop\buckets' }
-    $ArgumentList=@('-c','credential.helper=','-C',$WorkingDirectory)+$ArgumentList
-    & $git @ArgumentList
+    $ArgumentList=@('-c','credential.helper=','-c','core.fsmonitor=false','-c','protocol.ext.allow=never','-C',$WorkingDirectory)+$ArgumentList
+    $saved=@{}
+    foreach($key in @('PATH','HOME','XDG_CONFIG_HOME','GIT_CONFIG_GLOBAL','GIT_EXEC_PATH')) { $saved[$key]=[Environment]::GetEnvironmentVariable($key,'Process') }
+    try {
+        $gitRoot=Join-Path $env:PORTSCOOP_ROOT '.portscoop\tools\git'
+        $env:PATH=(Join-Path $gitRoot 'cmd')+';'+(Join-Path $gitRoot 'ucrt64\bin')+';'+(Join-Path $gitRoot 'usr\bin')+';'+(Join-Path $env:SystemRoot 'System32')
+        $env:HOME=Join-Path $env:PORTSCOOP_ROOT '.portscoop\state\git-home'
+        $env:XDG_CONFIG_HOME=$env:HOME
+        $env:GIT_CONFIG_GLOBAL='NUL'
+        $env:GIT_EXEC_PATH=Join-Path $gitRoot 'ucrt64\bin'
+        & $git @ArgumentList
+    } finally {
+        foreach($key in $saved.Keys){[Environment]::SetEnvironmentVariable($key,$saved[$key],'Process')}
+    }
 }
 function Convert-RepositoryUri {
     param([string]$Uri)

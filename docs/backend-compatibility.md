@@ -69,7 +69,7 @@ environment persistence, suppressed shortcuts/modules, preserved package data,
 and unchanged guest host-state and ordinary-Scoop sentinels. This is the adapter
 fixture; full CLI, two-environment, and release qualification remain in group 9.
 
-## Adapter revision portable-operations-v1.0
+## Adapter revision portable-operations-v1.1
 
 `scripts/prepare-backend.ps1` verifies the upstream inputs, uses PowerShell's AST
 to replace named functions at recorded patch sites, and emits every resulting
@@ -84,8 +84,8 @@ environment variables or broadcasts environment changes. Shortcuts are compiled
 into Store-owned bin aliases; module declarations are rejected until portable
 discovery exists. Missing shim targets fail instead of using
 an executable from PATH. Archive extraction uses the verified Go runtime and
-checked frozen request; it has no external helper fallback. Git-backed bucket operations require standalone Git at
-`%ProgramFiles%\Git\cmd\git.exe`; another Scoop's Git is not used as a helper.
+checked frozen request; it has no external helper fallback. Git-backed bucket
+operations resolve the verified private Git in `.portscoop/tools/git`.
 Managed Git calls discard inherited `GIT_*` controls, disable system/global
 config and terminal credential prompts, and use empty private hook/template
 directories. Manifests cannot set Git control variables. This initial Git bucket

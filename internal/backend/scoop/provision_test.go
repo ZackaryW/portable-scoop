@@ -68,7 +68,7 @@ func releaseFixture(t *testing.T) string {
 
 func TestInitializationPublishesUniqueReadyRootsAndPrivateLayout(t *testing.T) {
 	release := releaseFixture(t)
-	initializer := Initializer{ReleaseRoot: release}
+	initializer := Initializer{ReleaseRoot: release, BootstrapMain: fixtureMain}
 	var previous string
 	for _, name := range []string{"work", "personal"} {
 		root := filepath.Join(testutil.TempDir(t), name+" (portable)")
@@ -163,7 +163,7 @@ func TestInitializationFailurePreservesVerifiedRelease(t *testing.T) {
 	if err := copyTree(release, target); err != nil {
 		t.Fatal(err)
 	}
-	_, err := (Initializer{ReleaseRoot: release, Runner: &captureProcess{}, BeforePublish: func() error { return fmt.Errorf("injected publication failure") }}).Init(context.Background(), target, "work")
+	_, err := (Initializer{ReleaseRoot: release, Runner: &captureProcess{}, BootstrapMain: fixtureMain, BeforePublish: func() error { return fmt.Errorf("injected publication failure") }}).Init(context.Background(), target, "work")
 	if err == nil || !strings.Contains(err.Error(), "injected") {
 		t.Fatalf("error=%v", err)
 	}
@@ -199,7 +199,7 @@ func TestInitializationRejectsUnsupportedRuntimeBeforeReadiness(t *testing.T) {
 
 func TestHostWithDefaultStoreCanInitializeMoreStores(t *testing.T) {
 	release := releaseFixture(t)
-	initializer := Initializer{ReleaseRoot: release}
+	initializer := Initializer{ReleaseRoot: release, BootstrapMain: fixtureMain}
 	store := filepath.Join(release, environment.DefaultStoreDirectory)
 	id, err := initializer.Init(context.Background(), store, "Default")
 	if err != nil {

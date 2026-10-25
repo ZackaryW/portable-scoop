@@ -31,5 +31,10 @@ the previous files if replacement fails. A direct Store self-update updates
 compatible launchers only, retaining its existing backend and helpers. Helpers
 are private runtime components, separate from apps installed with `psp install`.
 
-Automatic Main bootstrap and NSIS package extraction require the remaining
-backend integration; shipping the helper files alone does not enable them.
+New Stores acquire Main at revision `990163c94e827a8a3966f643e86a4861aa13666e`
+using their private Git before becoming ready. `psp env bootstrap` prepares an
+absent Main in an existing compatible Store and reports tool versions. It keeps
+an existing official Main checkout and reports conflicting sources.
+
+NSIS package extraction still requires the extraction integration; the helper
+bundle alone does not broaden supported package formats.

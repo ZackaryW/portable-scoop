@@ -12,6 +12,7 @@ import (
 	"portscoop/internal/backend/scoop"
 	"portscoop/internal/environment"
 	"portscoop/internal/registry"
+	"portscoop/internal/resolver"
 )
 
 func newEnvironmentCommand(options Options) *cobra.Command {
@@ -27,29 +28,54 @@ func newEnvironmentCommand(options Options) *cobra.Command {
 			return err
 		}
 		fmt.Fprintf(cmd.OutOrStdout(), "Initialized %s (%s) at %s\n", id.Name, id.ID, args[0])
-		return nil
-	}}
-	initialize.Flags().StringVar(&displayName, "name", "", "Portable environment display name")
-	initialize.MarkFlagRequired("name")
-	bootstrap := &cobra.Command{Use: "bootstrap", Short: "Create and select a first default Store in this Host's store subfolder", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, args []string) error {
-		if options.Initializer == nil {
-			return fmt.Errorf("default Store initialization requires a verified Host release")
-		}
-		host := filepath.Dir(options.ExecutablePath)
-		if _, err := os.Stat(filepath.Join(host, filepath.FromSlash(environment.MarkerRelative))); !os.IsNotExist(err) {
-			return fmt.Errorf("env bootstrap must be run from a Host launcher")
-		}
-		store := filepath.Join(host, environment.DefaultStoreDirectory)
-		created, err := manager.Bootstrap(cmd.Context(), store, options.Initializer.Init)
+		absolute, err := filepath.Abs(args[0])
 		if err != nil {
 			return err
 		}
-		if created {
-			fmt.Fprintln(cmd.OutOrStdout(), "Default Store ready at", store)
-		} else {
-			fmt.Fprintln(cmd.OutOrStdout(), "Existing default Store kept; no additional Store was created")
+		paths, err := environment.PathsAt(absolute)
+		if err != nil {
+			return err
 		}
-		return nil
+		return scoop.ReportBootstrap(paths, cmd.OutOrStdout())
+	}}
+	initialize.Flags().StringVar(&displayName, "name", "", "Portable environment display name")
+	initialize.MarkFlagRequired("name")
+	bootstrap := &cobra.Command{Use: "bootstrap", Short: "Prepare Main and report managed tools, or create a first default Store", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, args []string) error {
+		selector, _ := cmd.Flags().GetString("env")
+		host := filepath.Dir(options.ExecutablePath)
+		_, localErr := os.Stat(filepath.Join(host, ".portscoop"))
+		if localErr != nil && !os.IsNotExist(localErr) {
+			return localErr
+		}
+		// Keep the existing Host first-Store and missing-default recovery rules.
+		// An explicit selector and a direct Store always target only that Store.
+		create := os.IsNotExist(localErr) && selector == ""
+		if create {
+			if options.Initializer == nil {
+				return fmt.Errorf("default Store initialization requires a verified Host release")
+			}
+			store := filepath.Join(host, environment.DefaultStoreDirectory)
+			created, err := manager.Bootstrap(cmd.Context(), store, options.Initializer.Init)
+			if err != nil {
+				return err
+			}
+			if created {
+				fmt.Fprintln(cmd.OutOrStdout(), "Default Store ready at", store)
+			}
+		}
+		selection, err := resolver.Select(options.Files, options.ExecutablePath, manager.Store.Read, selector)
+		if err != nil {
+			return err
+		}
+		local := environment.Context{Identity: selection.Identity, Paths: selection.Paths}
+		if !selection.Local {
+			target, err := (resolver.Discovery{Files: options.Files, Volumes: options.Volumes}).Resolve(cmd.Context(), selection)
+			if err != nil {
+				return err
+			}
+			local = environment.Context{Identity: target.Identity, Paths: target.Paths}
+		}
+		return (scoop.Bootstrapper{Runner: options.Runner}).Bootstrap(cmd.Context(), local, cmd.OutOrStdout())
 	}}
 	var name string
 	register := &cobra.Command{Use: "register <path> --name <alias>", Short: "Register a ready portable environment without modifying its package data", Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {

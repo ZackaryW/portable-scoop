@@ -90,6 +90,26 @@ func TestContextCannotRedirectPrivatePaths(t *testing.T) {
 	}
 }
 
+func TestManagedGitNeverSearchesCallerToolsOrConfig(t *testing.T) {
+	paths, _ := environment.PathsAt(t.TempDir())
+	parent := []string{`SystemRoot=C:\Windows`, `PATH=C:\host-tools`, `HOME=C:\user`, `GIT_CONFIG_SYSTEM=C:\host.config`, `GIT_CONFIG_GLOBAL=C:\user.config`, `GIT_CONFIG_COUNT=1`, `GIT_CONFIG_KEY_0=credential.helper`, `GIT_CONFIG_VALUE_0=host-helper`, `GIT_EXEC_PATH=C:\host-tools`, `GIT_DIR=C:\other\.git`}
+	before := append([]string{}, parent...)
+	env, err := runner.GitEnvironment(environment.Context{Paths: paths}, parent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	values := environmentMap(env)
+	if values["GIT_CONFIG_SYSTEM"] != "NUL" || values["GIT_CONFIG_GLOBAL"] != "NUL" || values["GIT_CONFIG_NOSYSTEM"] != "1" || values["GIT_DIR"] != "" {
+		t.Fatal("inherited Git config")
+	}
+	if strings.Contains(values["PATH"], "host-tools") || !strings.HasPrefix(values["GIT_EXEC_PATH"], paths.Control) || !strings.HasPrefix(values["HOME"], paths.State) {
+		t.Fatal("host tool discovery retained")
+	}
+	if !reflect.DeepEqual(parent, before) {
+		t.Fatal("caller environment changed")
+	}
+}
+
 func TestPowerShellResolutionIgnoresPATH(t *testing.T) {
 	systemRoot := t.TempDir()
 	exe := filepath.Join(systemRoot, "System32", "WindowsPowerShell", "v1.0", "powershell.exe")

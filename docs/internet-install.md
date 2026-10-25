@@ -46,8 +46,8 @@ F:\Portscoop\store\scoop\apps\...
 
 The Store remains independent and can also run directly. After opting out, run
 `psp env bootstrap` from the Host to create its first default Store later.
-Adding package catalogs still uses `psp bucket add`; see [setup](setup.md) for
-the standalone Git prerequisite.
+Main and private Git/7-Zip tools are prepared automatically. Add other package
+catalogs with `psp bucket add extras`; no standalone Git installation is needed.
 
 For explicit options, run the downloaded script in a child scope:
 
