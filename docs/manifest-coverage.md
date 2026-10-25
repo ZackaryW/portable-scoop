@@ -1,5 +1,14 @@
 # Manifest coverage
 
+## Download checkpoint (2026-10-25)
+
+Frozen naming and inert EXE retention raise full install-preflight acceptance to
+**2,072 / 4,148 (50.0%)**, up 446 from the restored baseline: Main 1,105 / 1,700;
+Extras 967 / 2,448. This is static acceptance, not an installation success rate.
+[Evidence](evidence/manifest-coverage-downloads-2026-10-25.json) pins the exact
+implementation and the same bucket snapshots. Hook and extraction expansion
+remain pending at this checkpoint; the 70% aspiration is unchanged.
+
 The restored baseline passes **1,626 of 4,148 full install preflights (39.2%)**, measured on 2026-10-25. The goal for the generic compatibility change is **70%** of combined Main and Extras: at least 2,904 entries in this snapshot. It is a goal, not a mandatory gate or permission to skip required behavior.
 
 | Bucket | Entries | Own manifest passes | Full install preflight passes |
