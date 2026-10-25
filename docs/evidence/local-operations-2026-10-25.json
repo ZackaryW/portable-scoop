@@ -1,0 +1,28 @@
+{
+  "passed": true,
+  "kind": "local-operation-integration",
+  "apps": [
+    {
+      "name": "rufus",
+      "version": "4.15",
+      "installed": true,
+      "literal_verified": true
+    },
+    {
+      "name": "nunit-console",
+      "version": "3.22.0",
+      "installed": true,
+      "literal_verified": true
+    }
+  ],
+  "error": null,
+  "synthetic": true,
+  "otherStoreUnchanged": true,
+  "ordinaryScoopUnchanged": true,
+  "persistentPathUnchanged": true,
+  "hook_implementation_revision": "e98d611115c26f8716f856ec99d4f24a781f43a9",
+  "archive_implementation_revision": "8bc2456878f38e685783d4e4fd51feb650931360",
+  "build_note": "Built with the local hook changes before their commit and before the later archive ancestor validation fix; the final mixed qualification uses the completed source.",
+  "release_version": "0.3.1-operations-dev5",
+  "release_sha256": "b7e91c36068f191730e603811a908aa057a608596224c26d8ffed431aa1c8ea8"
+}

@@ -1,5 +1,15 @@
 # Manifest coverage
 
+## Local-operation checkpoint (2026-10-25)
+
+Local copy, directory and literal-default units reach **2,517 / 4,148 (60.7%)**
+full install preflight: Main 1,296 / 1,700; Extras 1,221 / 2,448, a gain of 45.
+[Pinned final audit](evidence/manifest-coverage-final-2026-10-25.json).
+[VMware evidence](evidence/local-operations-2026-10-25.json) qualifies Rufus and
+NUnit defaults plus mixed pre/post operations, preserved customized data, and an
+unchanged second Store. This remains below the 70% aspiration; the final report
+must retain that shortfall and the runtime qualification limits.
+
 ## Managed archive checkpoint (2026-10-25)
 
 Managed archive formats reach **2,472 / 4,148 (59.6%)** full install preflight:
