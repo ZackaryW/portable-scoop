@@ -15,7 +15,8 @@ to the manifest declaration; these provide different levels of integrity.
 
 Direct EXE payloads are retained as inert package files. Installer declarations
 remain unsupported. Filename acceptance does not prove a payload is portable.
-ZIP extraction remains available; other archive readers are a later checkpoint.
+Managed extraction supports ZIP/nupkg, 7z, tar, tar.gz/tgz and single-file gzip.
+See [archive extraction](archive-extraction.md) for content validation and limits.
 
 The matching runtime/backend contract is `portable-operations-v1.0`. This requires
 a matching distribution; replacing individual files in an older Store is unsupported.

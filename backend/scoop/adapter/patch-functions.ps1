@@ -3,6 +3,12 @@
 function is_scoop_outdated { return $false }
 function Get-DefaultArchitecture { return '64bit' }
 function Test-HelperInstalled { param([string]$Helper) return $false }
+function Get-InstallationHelper {
+    param($Manifest,$Architecture,[switch]$All)
+    # All permitted extraction is managed by Portscoop; explicit app dependencies
+    # still go through Get-Dependency and the frozen manifest closure.
+    return @()
+}
 function Get-HelperPath {
     param([string]$Helper)
     if ($Helper -ine 'Git') { return $null }
@@ -106,6 +112,17 @@ function Invoke-ScoopDownload {
     return @($downloads | ForEach-Object { [string]$_.name })
 }
 
+function Invoke-Extraction {
+    param([string]$Path,[string[]]$Name,[psobject]$Manifest,[Alias('Arch','Architecture')][string]$ProcessorArchitecture)
+    $entry = $portscoopRequest.manifests.PSObject.Properties | Where-Object { $_.Name -ieq $app } | Select-Object -First 1
+    if (-not $entry -or $entry.Value.manifest.version -cne $Manifest.version) { throw 'No frozen extraction manifest' }
+    $expected = Join-Path $env:PORTSCOOP_ROOT "scoop\apps\$app\$($Manifest.version)"
+    if (-not ([IO.Path]::GetFullPath($Path)).Equals($expected,[StringComparison]::OrdinalIgnoreCase)) { throw 'Extraction directory differs from Store' }
+    if (($Name -join "`n") -cne (@($entry.Value.downloads | ForEach-Object { $_.name }) -join "`n")) { throw 'Extraction names differ from frozen plan' }
+    # Fixed Store runtime, checked by its runtime receipt and the request identity.
+    & (Join-Path $env:PORTSCOOP_ROOT 'portscoop.exe') __portscoop_extract $app
+    if ($LASTEXITCODE -ne 0) { throw 'Managed extraction failed' }
+}
 function Invoke-Installer {
     param([string]$Path, [string[]]$Name, [psobject]$Manifest, [Alias('Arch','Architecture')][string]$ProcessorArchitecture, [string]$AppName, [switch]$Global, [switch]$Uninstall)
     if ($Global -or (arch_specific 'installer' $Manifest $ProcessorArchitecture) -or (arch_specific 'uninstaller' $Manifest $ProcessorArchitecture)) {

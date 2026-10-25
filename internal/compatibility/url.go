@@ -30,8 +30,17 @@ func downloadName(value string) (string, string, string, error) {
 	}
 	format := ""
 	switch strings.ToLower(path.Ext(name)) {
-	case ".zip":
+	case ".zip", ".nupkg":
 		format = "zip"
+	case ".7z":
+		format = "7z"
+	case ".tar":
+		format = "tar"
+	case ".tgz":
+		format = "tar.gz"
+	case ".gz":
+		format = "gzip"
+		if strings.HasSuffix(strings.ToLower(name),".tar.gz") {format="tar.gz"}
 	case ".exe":
 		format = "file"
 	default:

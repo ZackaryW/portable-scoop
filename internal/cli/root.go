@@ -57,6 +57,9 @@ func NewWithOptions(version string, options Options) *cobra.Command {
 	root.CompletionOptions.DisableDefaultCmd = true
 	root.AddCommand(newEnvironmentCommand(options))
 	root.AddCommand(releaseVerificationCommand(options))
+	root.AddCommand(&cobra.Command{Use: "__portscoop_extract <app>", Hidden: true, Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
+		return scoop.ExtractFrozen(cmd.Context(), options.ExecutablePath, os.Getenv("PORTSCOOP_REQUEST_FILE"), args[0])
+	}})
 	addDelegationCommands(root, version, options)
 	root.AddCommand(selfUpdateCommand(options))
 	return root

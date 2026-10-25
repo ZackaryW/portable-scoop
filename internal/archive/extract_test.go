@@ -175,6 +175,16 @@ func TestRejectUnsafeArchivesBeforePublication(t *testing.T) {
 		t.Fatal("renamed EXE accepted")
 	}
 }
+
+func TestZipContentWithGenericSevenzipHint(t *testing.T) {
+	root, q := setup(t, zipFixture(t, fixtureMember{"tool.txt", "hello", 0600}), "7z")
+	if err := Extract(context.Background(), root, q); err != nil {
+		t.Fatal(err)
+	}
+	if b, err := os.ReadFile(filepath.Join(q.Destination, "tool.txt")); err != nil || string(b) != "hello" {
+		t.Fatal(err)
+	}
+}
 func TestLimitsCancellationAndExistingTargets(t *testing.T) {
 	data := zipFixture(t, fixtureMember{"a", "12345", 0600}, fixtureMember{"b", "12345", 0600})
 	for _, limit := range []Limits{{1, 100, 100}, {10, 9, 100}, {10, 100, 4}} {

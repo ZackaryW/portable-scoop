@@ -83,8 +83,8 @@ them only to managed child processes. It never reads/writes persistent host
 environment variables or broadcasts environment changes. Shortcuts are compiled
 into Store-owned bin aliases; module declarations are rejected until portable
 discovery exists. Missing shim targets fail instead of using
-an executable from PATH. ZIP extraction always uses the Windows PowerShell
-archive implementation. Git-backed bucket operations require standalone Git at
+an executable from PATH. Archive extraction uses the verified Go runtime and
+checked frozen request; it has no external helper fallback. Git-backed bucket operations require standalone Git at
 `%ProgramFiles%\Git\cmd\git.exe`; another Scoop's Git is not used as a helper.
 Managed Git calls discard inherited `GIT_*` controls, disable system/global
 config and terminal credential prompts, and use empty private hook/template

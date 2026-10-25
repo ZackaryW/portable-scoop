@@ -8,7 +8,7 @@ Architecture selection precedes effect inspection. All branch objects must be st
 
 | Fields | Behavior |
 | --- | --- |
-| `version`, `url`, `hash` | Fixed versions; checked HTTP(S) ZIP and inert EXE download plans with filename fragments and query handling; SHA-256, SHA-1, SHA-512, or MD5 with exact digest lengths. Release/backend integrity remains SHA-256. |
+| `version`, `url`, `hash` | Fixed versions; checked HTTP(S) ZIP/nupkg, 7z, tar/gzip and inert EXE download plans with filename fragments and query handling; SHA-256, SHA-1, SHA-512, or MD5 with exact digest lengths. Release/backend integrity remains SHA-256. |
 | `extract_dir`, `extract_to` | Checked package-relative paths, including `.`. |
 | `bin` | Store-owned shims; literal fixed arguments for native EXE/COM targets. Script-wrapper arguments, dynamic expansion, and absolute host paths in fixed arguments are rejected. |
 | `shortcuts` | Rewrite target/name/optional native arguments into launch aliases. Spaces in names become hyphens. No host Start Menu entry; icon overrides are unsupported. Identical aliases deduplicate; conflicting aliases reject. |

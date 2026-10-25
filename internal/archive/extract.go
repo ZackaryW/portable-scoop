@@ -209,6 +209,14 @@ func Extract(ctx context.Context, root string, q Request) error {
 	}
 	defer os.RemoveAll(stage)
 	s := staging{ctx: ctx, root: stage, limits: q.Limits, entries: map[string]entry{}}
+	// Scoop uses #/dl.7z as a generic archive hint, including ZIP payloads.
+	// Recognize supported content rather than assuming all such files are 7z.
+	if q.Format == "7z" {
+		var signature [4]byte
+		if _, err := f.ReadAt(signature[:], 0); err == nil && (string(signature[:]) == "PK\x03\x04" || string(signature[:]) == "PK\x05\x06") {
+			q.Format = "zip"
+		}
+	}
 	switch q.Format {
 	case "zip":
 		z, err := zip.NewReader(ctxReaderAt{ctx, f}, info.Size())
@@ -394,4 +402,43 @@ func (s *staging) publish(root string, q Request) error {
 		}
 	}
 	return nil
+}
+
+// Publish combines previously validated containers before modifying a package.
+func Publish(ctx context.Context, root, stage, destination string) error {
+	if err := Confined(root, stage); err != nil {
+		return err
+	}
+	if err := Confined(root, destination); err != nil {
+		return err
+	}
+	s := staging{ctx: ctx, root: stage, entries: map[string]entry{}}
+	err := filepath.WalkDir(stage, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if p == stage {
+			return nil
+		}
+		if err := Confined(root, p); err != nil {
+			return err
+		}
+		if !d.IsDir() && !d.Type().IsRegular() {
+			return fmt.Errorf("invalid staged file")
+		}
+		rel, err := filepath.Rel(stage, p)
+		if err != nil {
+			return err
+		}
+		rel = filepath.ToSlash(rel)
+		if !SafePath(rel) {
+			return fmt.Errorf("invalid staged member")
+		}
+		s.entries[strings.ToLower(rel)] = entry{rel, d.IsDir()}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return s.publish(root, Request{Destination: destination})
 }
