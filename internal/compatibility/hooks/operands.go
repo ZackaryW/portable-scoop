@@ -52,12 +52,15 @@ func operandPath(c Context, t token, root string, glob bool) (string, error) {
 	return s, nil
 }
 func persisted(c Context, p string) bool {
+	return persistencePath(c, p) != ""
+}
+func persistencePath(c Context, p string) string {
 	for _, pair := range c.Persist {
 		if strings.EqualFold(strings.ReplaceAll(pair[0], `\`, "/"), p) && safeRelative(pair[1]) {
-			return true
+			return strings.ReplaceAll(pair[1], `\`, "/")
 		}
 	}
-	return false
+	return ""
 }
 func persistenceOverlap(c Context, p string) bool {
 	for _, pair := range c.Persist {

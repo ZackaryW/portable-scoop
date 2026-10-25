@@ -42,8 +42,9 @@ func initialize(c Context, n node) (operation, bool, error) {
 	if err != nil {
 		return operation{}, true, err
 	}
-	if kind != "file" || cs[0].kind == "container" || !strings.EqualFold(p, target) || !persisted(c, target) {
+	saved := persistencePath(c, target)
+	if kind != "file" || cs[0].kind == "container" || !strings.EqualFold(p, saved) || saved == "" {
 		return operation{}, true, fmt.Errorf("empty configuration requires matching persistence and file paths")
 	}
-	return operation{action: &Action{Kind: "ensure-persisted-file", Path: target}, reason: "initialize empty configuration while preserving persisted data"}, true, nil
+	return operation{action: &Action{Kind: "ensure-persisted-file", Path: target, PersistPath: saved}, reason: "initialize empty configuration while preserving persisted data"}, true, nil
 }

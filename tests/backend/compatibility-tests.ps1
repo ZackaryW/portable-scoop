@@ -20,9 +20,9 @@ $app = 'fixture'
 $dir = Join-Path $Root 'scoop\apps\fixture\1.0'
 $persist_dir = Join-Path $Root 'scoop\persist\fixture'
 New-Item -ItemType Directory -Path $dir,$persist_dir -Force | Out-Null
-$action = [pscustomobject]@{phase='pre_install';kind='ensure-persisted-file';path='config.xml'}
-$manifest = [pscustomobject]@{version='1.0';pre_install='this string must never be evaluated'}
-$portscoopRequest = [pscustomobject]@{manifests=[pscustomobject]@{fixture=[pscustomobject]@{manifest=$manifest;actions=@($action)}}}
+$action = [pscustomobject]@{phase='pre_install';kind='ensure-persisted-file';path='config.xml';persist_path='config.xml'}
+$manifest = [pscustomobject]@{version='1.0';pre_install='this string must never be evaluated';persist='config.xml'}
+$portscoopRequest = [pscustomobject]@{manifests=[pscustomobject]@{fixture=[pscustomobject]@{manifest=$manifest;actions=@($action);decisions=@([pscustomobject]@{field='pre_install';disposition='rewrite'})}}}
 Invoke-HookScript pre_install $manifest 64bit
 Assert ([IO.File]::Exists("$dir\config.xml")) 'Configuration was not created'
 Assert ((Get-Item -LiteralPath "$dir\config.xml").Length -eq 0) 'Configuration was not empty'
@@ -47,9 +47,11 @@ Reject { install_psmodule ([pscustomobject]@{psmodule=@{name='Test'}}) $dir $fal
 Reject { create_startmenu_shortcuts ([pscustomobject]@{shortcuts=@(,@('app.exe','App'))}) $dir $false 64bit }
 
 $action.path = 'directory.xml'
+$action.persist_path = 'directory.xml'
 New-Item -ItemType Directory -Path "$persist_dir\directory.xml" | Out-Null
 Reject { Invoke-HookScript pre_install $manifest 64bit }
 $action.path = 'config.xml'
+$action.persist_path = 'config.xml'
 # Junctions need no symlink privilege. All targets are inside this test root.
 $outside = Join-Path $Root 'sentinel'
 New-Item -ItemType Directory -Path $outside | Out-Null
@@ -62,6 +64,46 @@ Assert ([IO.File]::ReadAllText("$outside\config.xml") -ceq 'sentinel') 'Reparse 
 # Missing persistence is normal; no persistence directory is created by the hook.
 Invoke-PortscoopAction $action 'newapp' '1.0' (New-Item -ItemType Directory -Path "$Root\scoop\apps\newapp\1.0" -Force).FullName "$Root\scoop\persist\newapp"
 Assert ([IO.File]::Exists("$Root\scoop\apps\newapp\1.0\config.xml")) 'Missing persistence failed'
+
+# Ordered rename chains, missing sources, and non-overwriting destinations.
+$first=[pscustomobject]@{phase='pre_install';kind='rename-package-file';source='first.exe';path='second.exe'}
+$second=[pscustomobject]@{phase='pre_install';kind='rename-package-file';source='second.exe';path='third.exe'}
+[IO.File]::WriteAllText("$dir\first.exe",'inert executable fixture')
+$portscoopRequest.manifests.fixture.actions=@($first,$second)
+Invoke-HookScript pre_install $manifest 64bit
+Assert ([IO.File]::ReadAllText("$dir\third.exe") -ceq 'inert executable fixture') 'Rename ordering failed'
+Reject { Invoke-HookScript pre_install $manifest 64bit }
+[IO.File]::WriteAllText("$dir\first.exe",'preserve source')
+[IO.File]::WriteAllText("$dir\second.exe",'preserve destination')
+Reject { Invoke-HookScript pre_install $manifest 64bit }
+Assert ([IO.File]::ReadAllText("$dir\second.exe") -ceq 'preserve destination') 'Rename overwrote destination'
+
+# An explicitly skipped hook permits no actions and never evaluates its text.
+$portscoopRequest.manifests.fixture.actions=@()
+$portscoopRequest.manifests.fixture.decisions[0].disposition='skip'
+Invoke-HookScript pre_install $manifest 64bit
+
+# Post-install runs through the exact current junction and an owned hard link.
+$physical=$dir
+$dir=Join-Path $Root 'scoop\apps\fixture\current'
+New-Item -ItemType Junction -Path $dir -Target $physical | Out-Null
+$first.phase='post_install'; $first.source='third.exe'; $first.path='final.exe'
+Invoke-PortscoopAction $first $app '1.0' $dir $persist_dir
+Assert ([IO.File]::Exists("$physical\final.exe")) 'Post-install rename failed'
+Reject { Invoke-PortscoopAction $first $app '1.0' $physical $persist_dir }
+[IO.File]::Delete("$physical\config.xml")
+New-Item -ItemType HardLink -Path "$physical\config.xml" -Target "$persist_dir\config.xml" | Out-Null
+$action.phase='post_install'
+Invoke-PortscoopAction $action $app '1.0' $dir $persist_dir
+Assert ([IO.File]::ReadAllText("$persist_dir\config.xml") -ceq 'saved configuration') 'Post-install changed persistence'
+[IO.File]::Delete("$physical\config.xml")
+[IO.File]::WriteAllText("$physical\config.xml",'unrelated equal-looking file')
+Reject { Invoke-PortscoopAction $action $app '1.0' $dir $persist_dir }
+[IO.Directory]::Delete($dir)
+New-Item -ItemType Junction -Path $dir -Target $outside | Out-Null
+Reject { Invoke-PortscoopAction $action $app '1.0' $dir $persist_dir }
+[IO.Directory]::Delete($dir)
+$dir=$physical
 if ($Backend) {
     # Load only the pinned backend's hash functions, without its module startup
     # or any package hooks. The input is a prepared, verified build artifact.

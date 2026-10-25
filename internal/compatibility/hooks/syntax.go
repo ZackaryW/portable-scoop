@@ -39,7 +39,7 @@ func lex(source string) ([]token, error) {
 			return nil, fmt.Errorf("line %d: escapes and NUL are unsupported", line)
 		}
 		if c == '\n' || c == ';' {
-			out = append(out, token{text: ";", line: line})
+			out = append(out, token{text: string(c), line: line})
 			if c == '\n' {
 				line++
 			}
@@ -112,7 +112,7 @@ func (p *parser) statements(depth int) ([]node, error) {
 	}
 	var out []node
 	for p.pos < len(p.tokens) {
-		if p.is(";") {
+		if p.is(";") || p.is("\n") {
 			p.pos++
 			continue
 		}
@@ -146,13 +146,13 @@ func (p *parser) statements(depth int) ([]node, error) {
 				return nil, fmt.Errorf("line %d: unclosed condition", n.line)
 			}
 			for _, t := range p.tokens[start:p.pos] {
-				if t.quote == 0 && t.text == ";" {
+				if t.quote == 0 && t.text == "\n" {
 					continue
 				}
 				n.condition = append(n.condition, t)
 			}
 			p.pos++
-			for p.is(";") {
+			for p.is("\n") {
 				p.pos++
 			}
 			if !p.is("{") {
@@ -168,11 +168,11 @@ func (p *parser) statements(depth int) ([]node, error) {
 				return nil, fmt.Errorf("line %d: unclosed block", n.line)
 			}
 			p.pos++
-			if p.pos < len(p.tokens) && !p.is(";") && !p.is("}") {
+			if p.pos < len(p.tokens) && !p.is(";") && !p.is("\n") && !p.is("}") {
 				return nil, fmt.Errorf("line %d: trailing block expression", n.line)
 			}
 		} else {
-			for p.pos < len(p.tokens) && !p.is(";") && !p.is("}") {
+			for p.pos < len(p.tokens) && !p.is(";") && !p.is("\n") && !p.is("}") {
 				if p.is("{") {
 					return nil, fmt.Errorf("line %d: unsupported block", n.line)
 				}

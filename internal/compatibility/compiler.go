@@ -5,6 +5,7 @@ package compatibility
 import (
 	"encoding/json"
 	"fmt"
+	"portscoop/internal/compatibility/hooks"
 	"sort"
 	"strings"
 )
@@ -28,11 +29,7 @@ type Decision struct {
 }
 
 // Action has no command or script payload. Paths are package-relative.
-type Action struct {
-	Phase string `json:"phase"`
-	Kind  string `json:"kind"`
-	Path  string `json:"path"`
-}
+type Action = hooks.Action
 
 type Plan struct {
 	Manifest  Manifest   `json:"manifest"`
@@ -47,6 +44,7 @@ type result struct {
 	value       json.RawMessage
 	actions     []Action
 	bindings    [][]string
+	hookPlan    hooks.Plan
 }
 type handler func(Manifest, json.RawMessage) (result, error)
 
@@ -87,6 +85,7 @@ func Compile(input Manifest) (Plan, error) {
 	sort.Strings(keys)
 	var failures []string
 	var bindings [][]string
+	var hookPlans []hooks.Plan
 	for _, key := range keys {
 		h, ok := fields[key]
 		var r result
@@ -105,10 +104,21 @@ func Compile(input Manifest) (Plan, error) {
 				p.Manifest[key] = append(json.RawMessage(nil), r.value...)
 			}
 			p.Actions = append(p.Actions, r.actions...)
+			hookPlans = append(hookPlans, r.hookPlan)
 			bindings = append(bindings, r.bindings...)
 		}
 		p.Decisions = append(p.Decisions, d)
 	}
+	if len(failures) == 0 {
+		if err := hooks.CheckDependencies(hookPlans...); err != nil {
+			failures = append(failures, err.Error())
+			p.Decisions = append(p.Decisions, Decision{"pre_install/post_install", Reject, err.Error()})
+		}
+	}
+	// Field order is diagnostic-only; actions always follow lifecycle order.
+	sort.SliceStable(p.Actions, func(i, j int) bool {
+		return p.Actions[i].Phase == "pre_install" && p.Actions[j].Phase == "post_install"
+	})
 	if len(failures) == 0 {
 		merged, err := mergeBindings(bindings)
 		if err != nil {

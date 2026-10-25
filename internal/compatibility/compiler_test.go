@@ -81,7 +81,7 @@ func TestPortableRewritesAndIdempotence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(p.Actions, []Action{{"pre_install", "ensure-persisted-file", "SpaceSnifferConfig.xml"}}) {
+	if !reflect.DeepEqual(p.Actions, []Action{{Phase: "pre_install", Kind: "ensure-persisted-file", Path: "SpaceSnifferConfig.xml", PersistPath: "SpaceSnifferConfig.xml"}}) {
 		t.Fatal(p.Actions)
 	}
 	var bins [][]string

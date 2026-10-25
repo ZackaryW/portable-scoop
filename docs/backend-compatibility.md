@@ -69,7 +69,7 @@ environment persistence, suppressed shortcuts/modules, preserved package data,
 and unchanged guest host-state and ordinary-Scoop sentinels. This is the adapter
 fixture; full CLI, two-environment, and release qualification remain in group 9.
 
-## Adapter revision portable-fields-v1.0
+## Adapter revision portable-operations-v1.0
 
 `scripts/prepare-backend.ps1` verifies the upstream inputs, uses PowerShell's AST
 to replace named functions at recorded patch sites, and emits every resulting
@@ -98,9 +98,14 @@ flattened to the supported 64bit declaration, and frozen in the private request.
 The patched manifest reader and installed-manifest writer consume this snapshot,
 preventing a changed bucket from replacing a checked declaration before install.
 Saved manifests from every affected installed version are checked before
-uninstall/update/reset/cleanup. The recognized persisted-file hook runs only its
-frozen typed action, with execution-time containment checks. Other hooks and
-installers fail inside the patched engine if reached unexpectedly.
+uninstall/update/reset/cleanup. Recognized pre/post-install operations run only
+their frozen typed actions in order, with phase-specific containment checks.
+Optional imports require explicit skip decisions; no script text is evaluated.
+Unsupported hooks and installers fail inside the patched engine if reached unexpectedly.
+
+Downloads consume frozen basenames, network URLs and digests, including cache
+hits. Direct EXEs remain inert. See [download plans](downloads.md) and
+[generic hook operations](hook-operations.md) for the current contracts.
 
 Verification checks the pin/patch/protocol, all recorded engine and adapter
 artifacts, required libraries, root-local config, and unrecorded added files.

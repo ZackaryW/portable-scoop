@@ -2,35 +2,44 @@ package compatibility
 
 import (
 	"encoding/json"
-	"regexp"
+	"fmt"
+	"portscoop/internal/compatibility/hooks"
 	"strings"
 )
 
-// This is an exact language of one reviewed operation, not a PowerShell safety
-// classifier. Anything outside this complete pattern must be rejected.
-var emptyConfig = regexp.MustCompile(`\A\s*if \(-not \(Test-Path -Path "\$persist_dir\\([A-Za-z0-9][A-Za-z0-9._-]*)" -PathType Leaf\)\) \{\s*New-Item -Path "\$dir\\([A-Za-z0-9][A-Za-z0-9._-]*)" -ItemType File -Force \| Out-Null\s*\}\s*\z`)
-
 func preInstall(m Manifest, raw json.RawMessage) (result, error) {
+	return compileHook(m, raw, "pre_install")
+}
+func compileHook(m Manifest, raw json.RawMessage, phase string) (result, error) {
 	lines, err := stringsValue(raw)
 	if err != nil {
 		return result{}, err
 	}
-	match := emptyConfig.FindStringSubmatch(strings.Join(lines, "\n"))
-	if len(match) != 3 || match[1] != match[2] || !relative(match[1]) {
-		return unsupported("unrecognized pre-install hook; no complete portable replacement")
-	}
-	entries, err := tuples(m["persist"])
-	if err != nil {
-		return unsupported("configuration initialization requires matching persistence")
-	}
-	found := false
-	for _, entry := range entries {
-		if (len(entry) == 1 && entry[0] == match[1]) || (len(entry) == 2 && entry[0] == match[1] && entry[1] == match[1]) {
-			found = true
+	version, _ := stringValue(m["version"])
+	c := hooks.Context{Version: version}
+	if entries, err := tuples(m["persist"]); err == nil {
+		for _, entry := range entries {
+			if len(entry) > 0 {
+				pair := [2]string{entry[0], entry[0]}
+				if len(entry) > 1 {
+					pair[1] = entry[1]
+				}
+				c.Persist = append(c.Persist, pair)
+			}
 		}
 	}
-	if !found {
-		return unsupported("configuration initialization requires matching persistence")
+	plan, err := hooks.Compile(c, phase, strings.Join(lines, "\n"))
+	if err != nil {
+		return result{}, err
 	}
-	return result{disposition: Rewrite, reason: "initialize empty configuration without evaluating PowerShell", value: raw, actions: []Action{{Phase: "pre_install", Kind: "ensure-persisted-file", Path: match[1]}}}, nil
+	reasons := []string{}
+	for _, d := range plan.Decisions {
+		reasons = append(reasons, fmt.Sprintf("operation %d line %d: %s (%s)", d.Position, d.Line, d.Disposition, d.Reason))
+	}
+	// Retain declarations so saved-manifest recompilation reproduces decisions.
+	disposition := Rewrite
+	if len(plan.Actions) == 0 {
+		disposition = Skip
+	}
+	return result{disposition: disposition, reason: strings.Join(reasons, "; "), value: raw, actions: plan.Actions, hookPlan: plan}, nil
 }

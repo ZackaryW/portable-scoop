@@ -94,28 +94,62 @@ function Assert-PortscoopActionPath {
     }
 }
 
+function Assert-PortscoopRelativePath {
+    param([string]$Path)
+    if (-not $Path -or [IO.Path]::IsPathRooted($Path) -or $Path -match '[<>:"|?*`$\x00-\x1f]') { throw 'Invalid action relative path' }
+    foreach ($part in ($Path -split '[\\/]')) {
+        if (-not $part -or $part -in @('.','..') -or $part.EndsWith('.') -or $part.EndsWith(' ') -or $part.Split('.')[0] -match '\A(CON|PRN|AUX|NUL|COM[0-9]|LPT[0-9])\z') { throw 'Invalid action path component' }
+    }
+}
 function Invoke-PortscoopAction {
     param([psobject]$Action, [string]$App, [string]$Version, [string]$Directory, [string]$PersistDirectory)
-    if ($Action.kind -cne 'ensure-persisted-file' -or $Action.phase -cne 'pre_install') { throw 'Unsupported portable action' }
-    foreach ($component in @($App, $Version, [string]$Action.path)) {
-        if ($component -notmatch '\A[A-Za-z0-9][A-Za-z0-9._+-]*\z' -or $component.EndsWith('.') -or
-            ($component.Split('.')[0] -match '\A(CON|PRN|AUX|NUL|COM[0-9]|LPT[0-9])\z')) { throw 'Invalid portable action path component' }
+    if ($Action.kind -cnotin @('ensure-persisted-file','rename-package-file') -or $Action.phase -cnotin @('pre_install','post_install')) { throw 'Unsupported portable action' }
+    foreach ($component in @($App,$Version)) {
+        if ($component -notmatch '\A[A-Za-z0-9][A-Za-z0-9._+-]*\z') { throw 'Invalid portable action identity' }
+        Assert-PortscoopRelativePath $component
     }
+    Assert-PortscoopRelativePath $Action.path
     if ($App -ieq 'scoop' -or $Version -ieq 'current') { throw 'Reserved portable action layout' }
-    $root = [IO.Path]::GetFullPath($env:PORTSCOOP_ROOT)
-    $expectedDir = Join-Path $root "scoop\apps\$App\$Version"
-    $expectedPersist = Join-Path $root "scoop\persist\$App"
-    if (-not ([IO.Path]::GetFullPath($Directory)).Equals($expectedDir, [StringComparison]::OrdinalIgnoreCase) -or
-        -not ([IO.Path]::GetFullPath($PersistDirectory)).Equals($expectedPersist, [StringComparison]::OrdinalIgnoreCase)) { throw 'Portable action layout differs from Store' }
-    $target = Join-Path $expectedDir $Action.path
-    $saved = Join-Path $expectedPersist $Action.path
-    Assert-PortscoopActionPath -Root $root -Path $target
-    Assert-PortscoopActionPath -Root $root -Path $saved
+    $root=[IO.Path]::GetFullPath($env:PORTSCOOP_ROOT)
+    $physical=Join-Path $root "scoop\apps\$App\$Version"
+    $expectedPersist=Join-Path $root "scoop\persist\$App"
+    $expectedDir=$physical
+    Assert-PortscoopActionPath $root $physical
+    Assert-PortscoopActionPath $root $expectedPersist
+    if ($Action.phase -ceq 'post_install') {
+        $expectedDir=Join-Path $root "scoop\apps\$App\current"
+        $link=Get-Item -LiteralPath $expectedDir -Force
+        $targets=@($link.Target)
+        if ($link.LinkType -ne 'Junction' -or $targets.Count -ne 1 -or -not ([IO.Path]::GetFullPath($targets[0])).Equals($physical,[StringComparison]::OrdinalIgnoreCase)) { throw 'Current alias differs from approved version' }
+    }
+    if (-not ([IO.Path]::GetFullPath($Directory)).Equals($expectedDir,[StringComparison]::OrdinalIgnoreCase) -or -not ([IO.Path]::GetFullPath($PersistDirectory)).Equals($expectedPersist,[StringComparison]::OrdinalIgnoreCase)) { throw 'Portable action layout differs from Store' }
+    $target=Join-Path $physical $Action.path
+    if ($Action.kind -ceq 'rename-package-file') {
+        Assert-PortscoopRelativePath $Action.source
+        $source=Join-Path $physical $Action.source
+        Assert-PortscoopActionPath $root $source
+        Assert-PortscoopActionPath $root $target
+        if (-not [IO.File]::Exists($source) -or [IO.File]::Exists($target) -or [IO.Directory]::Exists($target)) { throw 'Rename source missing or destination already exists' }
+        [IO.File]::Move($source,$target)
+        return
+    }
+    Assert-PortscoopRelativePath $Action.persist_path
+    $saved=Join-Path $expectedPersist $Action.persist_path
+    Assert-PortscoopActionPath $root $saved
+    Assert-PortscoopActionPath $root $target
     if ([IO.Directory]::Exists($target) -or [IO.Directory]::Exists($saved)) { throw 'Portable configuration path is a directory' }
+    if ($Action.phase -ceq 'post_install') {
+        # Persisted files are hard links after upstream persist_data. Verify the
+        # exact saved path among the link targets, then preserve it untouched.
+        $file=Get-Item -LiteralPath $target -Force
+        if (-not [IO.File]::Exists($saved) -or $file.LinkType -ne 'HardLink' -or $saved -notin @($file.Target)) { throw 'Unverified persisted file mapping after installation' }
+        return
+    }
     if ([IO.File]::Exists($saved)) { return }
-    # Never truncate an existing file (including a preexisting hard link).
     if (-not [IO.File]::Exists($target)) {
-        $stream = [IO.File]::Open($target, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
+        $parent=[IO.Path]::GetDirectoryName($target)
+        [IO.Directory]::CreateDirectory($parent) | Out-Null
+        $stream=[IO.File]::Open($target,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
         $stream.Dispose()
     }
 }

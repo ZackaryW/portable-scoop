@@ -56,15 +56,27 @@ function Sync-Bucket { throw 'Implicit bucket updates are disabled during app up
 function Invoke-HookScript {
 	param([string]$HookType, [psobject]$Manifest, [Alias('Arch','Architecture')][string]$ProcessorArchitecture)
     if (-not (arch_specific $HookType $Manifest $ProcessorArchitecture)) { return }
-    if ($HookType -cne 'pre_install') { throw 'No portable replacement for this package hook' }
+    if ($HookType -cnotin @('pre_install','post_install')) { throw 'No portable replacement for this package hook' }
     $entry = $portscoopRequest.manifests.PSObject.Properties | Where-Object { $_.Name -ieq $app } | Select-Object -First 1
     if (-not $entry -or $entry.Value.manifest.version -cne $Manifest.version -or
-        (@($entry.Value.manifest.pre_install) -join "`n") -cne (@($Manifest.pre_install) -join "`n")) {
+        (@($entry.Value.manifest.$HookType) -join "`n") -cne (@($Manifest.$HookType) -join "`n")) {
         throw 'Package hook does not match the frozen manifest'
     }
     $actions = @($entry.Value.actions | Where-Object { $_.phase -ceq $HookType })
-    if ($actions.Count -ne 1) { throw 'Package hook has no unique approved action' }
-    Invoke-PortscoopAction -Action $actions[0] -App $app -Version $Manifest.version -Directory $dir -PersistDirectory $persist_dir
+    $decision = @($entry.Value.decisions | Where-Object { $_.field -ceq $HookType -and $_.disposition -cin @('rewrite','skip') })
+    if ($decision.Count -ne 1 -or (-not $actions.Count -and $decision[0].disposition -cne 'skip')) { throw 'Package hook has no approved operation plan' }
+    foreach ($action in $actions) {
+        if ($action.persist_path) {
+            $mapped = $false
+            foreach ($item in @($entry.Value.manifest.persist)) {
+                $pair = @($item); $source = [string]$pair[0]; $saved = $source
+                if ($pair.Count -gt 1) { $saved = [string]$pair[1] }
+                if ($source.Replace('\','/') -ieq $action.path -and $saved.Replace('\','/') -ieq $action.persist_path) { $mapped = $true }
+            }
+            if (-not $mapped) { throw 'Action persistence mapping differs from frozen manifest' }
+        }
+        Invoke-PortscoopAction -Action $action -App $app -Version $Manifest.version -Directory $dir -PersistDirectory $persist_dir
+    }
 }
 function Invoke-ScoopDownload {
     param($app, $version, $manifest, $bucket, $architecture, $dir, $use_cache = $true, $check_hash = $true)

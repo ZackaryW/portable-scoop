@@ -10,11 +10,12 @@ type Context struct {
 	Persist [][2]string
 }
 type Action struct {
-	Phase   string `json:"phase"`
-	Kind    string `json:"kind"`
-	Path    string `json:"path"`
-	Source  string `json:"source,omitempty"`
-	Content string `json:"content,omitempty"`
+	Phase       string `json:"phase"`
+	Kind        string `json:"kind"`
+	Path        string `json:"path"`
+	Source      string `json:"source,omitempty"`
+	Content     string `json:"content,omitempty"`
+	PersistPath string `json:"persist_path,omitempty"`
 }
 type Decision struct {
 	Phase       string `json:"phase"`
@@ -24,8 +25,9 @@ type Decision struct {
 	Reason      string `json:"reason"`
 }
 type Plan struct {
-	Actions   []Action
-	Decisions []Decision
+	Actions              []Action
+	Decisions            []Decision
+	Reads, SkippedWrites []string
 }
 type operation struct {
 	action               *Action
@@ -80,6 +82,8 @@ func compile(c Context, phase, source string, registry []recognizer) (Plan, erro
 		}
 	}
 	for i, op := range accepted {
+		plan.Reads = append(plan.Reads, op.reads...)
+		plan.SkippedWrites = append(plan.SkippedWrites, op.skippedWrites...)
 		for _, read := range op.reads {
 			for _, other := range accepted {
 				for _, write := range other.skippedWrites {
@@ -91,6 +95,22 @@ func compile(c Context, phase, source string, registry []recognizer) (Plan, erro
 		}
 	}
 	return plan, nil
+}
+
+// CheckDependencies also accounts for dependencies between lifecycle phases.
+func CheckDependencies(plans ...Plan) error {
+	for _, p := range plans {
+		for _, read := range p.Reads {
+			for _, q := range plans {
+				for _, write := range q.SkippedWrites {
+					if overlaps(read, write) {
+						return fmt.Errorf("required operation depends on skipped host data")
+					}
+				}
+			}
+		}
+	}
+	return nil
 }
 func overlaps(a, b string) bool {
 	a = strings.ToLower(strings.ReplaceAll(a, `\`, "/"))

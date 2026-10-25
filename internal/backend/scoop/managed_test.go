@@ -39,7 +39,7 @@ func TestManagedFreezesPortableActionsAndReportsDecisions(t *testing.T) {
 		t.Fatal(err)
 	}
 	item := frozen["tool"]
-	if len(item.Actions) != 1 || item.Actions[0] != (compatibility.Action{Phase: "pre_install", Kind: "ensure-persisted-file", Path: "config.xml"}) || item.Manifest["shortcuts"] != nil || !strings.Contains(string(item.Manifest["bin"]), "My-Tool") {
+	if len(item.Actions) != 1 || item.Actions[0] != (compatibility.Action{Phase: "pre_install", Kind: "ensure-persisted-file", Path: "config.xml", PersistPath: "config.xml"}) || item.Manifest["shortcuts"] != nil || !strings.Contains(string(item.Manifest["bin"]), "My-Tool") {
 		t.Fatalf("bad frozen plan: %+v", item)
 	}
 	if !strings.Contains(notices.String(), "pre_install rewrite") || !strings.Contains(notices.String(), "shortcuts rewrite") {
