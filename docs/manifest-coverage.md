@@ -1,5 +1,16 @@
 # Manifest coverage
 
+## Managed archive checkpoint (2026-10-25)
+
+Managed archive formats reach **2,472 / 4,148 (59.6%)** full install preflight:
+Main 1,279 / 1,700; Extras 1,193 / 2,448. This adds 322 over generic hooks.
+[Pinned audit](evidence/manifest-coverage-archives-2026-10-25.json).
+[VMware qualification](evidence/archives-2026-10-25.json) independently verifies
+installation and CLI launch of `file` 5.45 (7z), `chroma` 2.27.0 (tar.gz), and
+`lxc` 6.10.0 (nupkg), with unchanged measured ordinary Scoop and persistent PATH
+sentinels. Static acceptance still cannot identify unsupported installer content
+hidden behind a generic archive filename.
+
 ## Generic hook checkpoint (2026-10-25)
 
 Ordered generic pre/post-install operations reach **2,150 / 4,148 (51.8%)** full

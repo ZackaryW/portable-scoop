@@ -1,0 +1,34 @@
+{
+  "passed": true,
+  "kind": "managed-archive-integration",
+  "apps": [
+    {
+      "executable_sha256": "7169e2e3da05ed83cb3c53cdbd919b7b91f9899325fe859fabd18d12afff3bb3",
+      "name": "file",
+      "version": "5.45",
+      "installed": true,
+      "cli_launched": true
+    },
+    {
+      "executable_sha256": "0fe4bccf2b77b6d62f3930bd57d1b2ea87eda1f11d8c0e919055095dc0a17dbc",
+      "name": "chroma",
+      "version": "2.27.0",
+      "installed": true,
+      "cli_launched": true
+    },
+    {
+      "executable_sha256": "1d70df6ee31579e00887c5f7015506e17e5e9bcb61b80012c266708b56687fb9",
+      "name": "lxc",
+      "version": "6.10.0",
+      "installed": true,
+      "cli_launched": true
+    }
+  ],
+  "error": null,
+  "ordinaryScoopUnchanged": true,
+  "persistentPathUnchanged": true,
+  "source_revision": "8bc2456878f38e685783d4e4fd51feb650931360",
+  "release_version": "0.3.1-operations-dev4",
+  "release_sha256": "0081cdd0ca009a28919e2399bed7f7a46b3871a79b0b1c7203d5d742c0a9a0d5",
+  "bucket_revision": "990163c94e827a8a3966f643e86a4861aa13666e"
+}
