@@ -1,0 +1,99 @@
+package hooks
+
+import (
+	"fmt"
+	"strings"
+)
+
+type Context struct {
+	Version string
+	Persist [][2]string
+}
+type Action struct {
+	Phase   string `json:"phase"`
+	Kind    string `json:"kind"`
+	Path    string `json:"path"`
+	Source  string `json:"source,omitempty"`
+	Content string `json:"content,omitempty"`
+}
+type Decision struct {
+	Phase       string `json:"phase"`
+	Position    int    `json:"position"`
+	Line        int    `json:"line"`
+	Disposition string `json:"disposition"`
+	Reason      string `json:"reason"`
+}
+type Plan struct {
+	Actions   []Action
+	Decisions []Decision
+}
+type operation struct {
+	action               *Action
+	reason               string
+	reads, skippedWrites []string
+}
+type recognizer func(Context, node) (operation, bool, error)
+
+var operations = []recognizer{rename, initialize, optionalImport}
+
+func Compile(c Context, phase, source string) (Plan, error) {
+	return compile(c, phase, source, operations)
+}
+func compile(c Context, phase, source string, registry []recognizer) (Plan, error) {
+	var plan Plan
+	fail := func(pos, line int, reason string) (Plan, error) {
+		plan.Actions = nil
+		plan.Decisions = append(plan.Decisions, Decision{phase, pos, line, "reject", reason})
+		return plan, fmt.Errorf("%s operation %d line %d: %s", phase, pos, line, reason)
+	}
+	if phase != "pre_install" && phase != "post_install" {
+		return fail(0, 0, "unsupported lifecycle phase")
+	}
+	nodes, err := parse(source)
+	if err != nil {
+		return fail(0, 0, err.Error())
+	}
+	var accepted []operation
+	for i, n := range nodes {
+		found := false
+		for _, recognize := range registry {
+			op, match, err := recognize(c, n)
+			if !match {
+				continue
+			}
+			found = true
+			if err != nil {
+				return fail(i+1, n.line, err.Error())
+			}
+			disposition := "skip"
+			if op.action != nil {
+				disposition = "rewrite"
+				op.action.Phase = phase
+				plan.Actions = append(plan.Actions, *op.action)
+			}
+			plan.Decisions = append(plan.Decisions, Decision{phase, i + 1, n.line, disposition, op.reason})
+			accepted = append(accepted, op)
+			break
+		}
+		if !found {
+			return fail(i+1, n.line, "unrecognized operation; complete hook required")
+		}
+	}
+	for i, op := range accepted {
+		for _, read := range op.reads {
+			for _, other := range accepted {
+				for _, write := range other.skippedWrites {
+					if overlaps(read, write) {
+						return fail(i+1, nodes[i].line, "required operation depends on skipped host data")
+					}
+				}
+			}
+		}
+	}
+	return plan, nil
+}
+func overlaps(a, b string) bool {
+	a = strings.ToLower(strings.ReplaceAll(a, `\`, "/"))
+	b = strings.ToLower(strings.ReplaceAll(b, `\`, "/"))
+	return a == b || strings.HasPrefix(a, b+"/") || strings.HasPrefix(b, a+"/")
+}
