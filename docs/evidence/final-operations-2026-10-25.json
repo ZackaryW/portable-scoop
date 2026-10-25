@@ -1,0 +1,39 @@
+{
+  "passed": true,
+  "kind": "local-operation-integration",
+  "apps": [
+    {
+      "name": "rufus",
+      "version": "4.15",
+      "installed": true,
+      "literal_verified": true
+    },
+    {
+      "name": "nunit-console",
+      "version": "3.22.0",
+      "installed": true,
+      "literal_verified": true
+    }
+  ],
+  "error": null,
+  "synthetic": true,
+  "otherStoreUnchanged": true,
+  "ordinaryScoopUnchanged": true,
+  "persistentPathUnchanged": true,
+  "implementation_revision": "8a0b626aa873bde6b993263aa956addd64c8bd07",
+  "release_version": "0.3.1-operations-dev6",
+  "release_sha256": "8b891acc47ffb4181f823eb2c549a6549878e570748c00392e0219e58d34f700",
+  "qualification_script": "tests/application/qualify-local-operations.ps1",
+  "verification": {
+    "go_regression": "go test -count=1 ./... passed with dev5 prepared backend",
+    "go_vet": "go vet ./... passed",
+    "distribution": "dev6 complete package verification passed",
+    "prepared_backend": "dev6 artifact, frozen-download and action executor checks passed with -count=1",
+    "openspec": "strict change validation passed"
+  },
+  "limits": [
+    "Targeted installation/default/reset and CLI checks, not complete application portability or UI qualification.",
+    "Rufus was not launched; no device-writing operation was run.",
+    "Sentinel comparisons cover the named Store, Scoop and persistent PATH state, not every possible runtime write."
+  ]
+}

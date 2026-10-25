@@ -1,80 +1,104 @@
 # Manifest coverage
 
-## Local-operation checkpoint (2026-10-25)
+**2,517 of 4,148 manifests pass full install preflight (60.7%)** on the pinned
+2026-10-25 Main and Extras snapshots. This is **891 more** than the restored
+baseline of 1,626 (39.2%).
 
-Local copy, directory and literal-default units reach **2,517 / 4,148 (60.7%)**
-full install preflight: Main 1,296 / 1,700; Extras 1,221 / 2,448, a gain of 45.
-[Pinned final audit](evidence/manifest-coverage-final-2026-10-25.json).
-[VMware evidence](evidence/local-operations-2026-10-25.json) qualifies Rufus and
-NUnit defaults plus mixed pre/post operations, preserved customized data, and an
-unchanged second Store. This remains below the 70% aspiration; the final report
-must retain that shortfall and the runtime qualification limits.
+The aspirational target was 70%, or at least 2,904 entries. **The result is 387
+entries short.** Required behavior was not skipped to inflate the count.
 
-## Managed archive checkpoint (2026-10-25)
+| Bucket | Entries | Own manifest passes | Full install preflight passes | Rate |
+| --- | ---: | ---: | ---: | ---: |
+| Main | 1,700 | 1,310 | 1,296 | 76.2% |
+| Extras | 2,448 | 1,233 | 1,221 | 49.9% |
+| **Total** | **4,148** | **2,543** | **2,517** | **60.7%** |
 
-Managed archive formats reach **2,472 / 4,148 (59.6%)** full install preflight:
-Main 1,279 / 1,700; Extras 1,193 / 2,448. This adds 322 over generic hooks.
-[Pinned audit](evidence/manifest-coverage-archives-2026-10-25.json).
-[VMware qualification](evidence/archives-2026-10-25.json) independently verifies
-installation and CLI launch of `file` 5.45 (7z), `chroma` 2.27.0 (tar.gz), and
-`lxc` 6.10.0 (nupkg), with unchanged measured ordinary Scoop and persistent PATH
-sentinels. Static acceptance still cannot identify unsupported installer content
-hidden behind a generic archive filename.
+Twenty-six entries pass their own fields but fail dependency preflight; the
+headline excludes them. Counts represent bucket/name entries, not unique apps.
+The [final JSON report](evidence/manifest-coverage-final-2026-10-25.json) includes
+all accepted names, per-field blockers, disjoint blocker combinations and closure
+failures. These results describe the source implementation, not every published
+release. Use a complete matching distribution.
 
-## Generic hook checkpoint (2026-10-25)
+## What was verified
 
-Ordered generic pre/post-install operations reach **2,150 / 4,148 (51.8%)** full
-install-preflight acceptance: Main 1,113 / 1,700; Extras 1,037 / 2,448. This adds
-78 entries over frozen downloads. [Pinned audit](evidence/manifest-coverage-hooks-2026-10-25.json).
-[Separate VMware evidence](evidence/generic-hooks-2026-10-25.json) records successful
-Bitwarden 2026.10.1 and SpaceSniffer 2.2.0.27 installation, reset/persistence and
-root-scoped detached launch, plus unrelated synthetic mixed-phase and all-skip
-packages. Measured guest host-profile, ordinary Scoop files and persistent PATH
-sentinels stayed unchanged. This does not establish portability for every accepted app.
+Preflight measures declarations and dependency closure only. It does not download
+or run apps, establish URL availability, inspect actual archive content, or prove
+application portability. In particular, a generic `.7z` name can hide unsupported
+installer content that will fail at runtime without being executed.
 
-## Download checkpoint (2026-10-25)
+Separate disposable-VM qualification covers:
 
-Frozen naming and inert EXE retention raise full install-preflight acceptance to
-**2,072 / 4,148 (50.0%)**, up 446 from the restored baseline: Main 1,105 / 1,700;
-Extras 967 / 2,448. This is static acceptance, not an installation success rate.
-[Evidence](evidence/manifest-coverage-downloads-2026-10-25.json) pins the exact
-implementation and the same bucket snapshots. Hook and extraction expansion
-remain pending at this checkpoint; the 70% aspiration is unchanged.
+- [Generic hooks](evidence/generic-hooks-2026-10-25.json): Bitwarden 2026.10.1 and
+  SpaceSniffer 2.2.0.27 install, reset/persistence and root-scoped detached launch;
+  unrelated synthetic mixed-phase and all-skip hooks; measured host sentinels.
+- [Archive formats](evidence/archives-2026-10-25.json): `file` 5.45 (7z), `chroma`
+  2.27.0 (tar.gz), and `lxc` 6.10.0 (nupkg) installation and CLI launch.
+- [Local defaults](evidence/local-operations-2026-10-25.json): Rufus and NUnit
+  defaults, packaged-default copy and post-install persistence, customized data
+  preservation, and a measured unchanged second Store.
+- [Final integrated build](evidence/final-operations-2026-10-25.json): repeated
+  mixed operations in fresh Stores after the archive-ancestor validation fix,
+  plus full regression, vet and distribution verification.
 
-The restored baseline passes **1,626 of 4,148 full install preflights (39.2%)**, measured on 2026-10-25. The goal for the generic compatibility change is **70%** of combined Main and Extras: at least 2,904 entries in this snapshot. It is a goal, not a mandatory gate or permission to skip required behavior.
+See [qualification details](generic-qualification.md) for build provenance and
+limits. Passing preflight does not mean 2,517 runtime-tested applications.
 
-| Bucket | Entries | Own manifest passes | Full install preflight passes |
-| --- | ---: | ---: | ---: |
-| Main | 1,700 | 867 | 854 |
-| Extras | 2,448 | 780 | 772 |
-| **Total** | **4,148** | **1,647** | **1,626** |
+## Remaining priorities
 
-Twenty-one entries pass their own declaration checks but fail dependency preflight. The headline excludes them. Entries are counted as bucket/name, not unique apps. Examples passing this baseline include ripgrep, fd, fzf, zoxide, and SpaceSniffer. Bitwarden is not supported in this baseline.
+These are **disjoint own-manifest blocker groups** from the final audit. Each
+count is an upper bound on the entries in that group, not a promised gain: a new
+handler must still prove portability, and dependencies may remain blocked.
 
-## Reproduce the baseline
+| Exact blocker set | Entries | Next investigation |
+| --- | ---: | --- |
+| `pre_install` | 396 | Generic literal bindings, bounded arrays and grouped defaults; distinguish required host effects |
+| `url` | 201 | Additional container formats and deterministic names; extraction-only MSI needs its own contract |
+| `post_install` | 99 | Reusable local transforms and grouped operations, without arbitrary script evaluation |
+| `installer` | 97 | Identify extract-only/local operations; executing installers remains unsupported |
+| `innosetup` | 92 | Evaluate a managed extraction-only reader separately |
+| `bin` | 67 | Classify alias collisions, wrapper arguments and target forms |
+| `pre_install` + `url` | 50 | Both payload handling and hook semantics must be solved |
+| `pre_install` + `post_install` | 47 | Account for both phases and their data dependencies |
+| `shortcuts` | 47 | Portable alias naming, nested names and icon-only declarations |
 
-- Portscoop: `e561421d85eaee0718f89263305d93e0aba64763`; policy `portable-fields-v1`, backend `portable-fields-v1.0`.
+The three hook-only groups above contain 542 entries in total. Their scripts are
+not necessarily portable or representable by a single safe operation. Subsequent
+changes should audit operation forms and full dependency closure before claiming
+new coverage. Larger MSI/Inno work and new script grammar need reviewed contracts.
+
+## Reproduce the measurement
+
+- Portscoop: `e98d611115c26f8716f856ec99d4f24a781f43a9`.
+- Manifest policy: `portable-fields-v1`; backend: `portable-operations-v1.0`.
 - Main: `990163c94e827a8a3966f643e86a4861aa13666e`.
 - Extras: `6c4f7709ed26a7979bad9e48f73ce549054a45b6`.
 
-The [baseline report](evidence/manifest-coverage-baseline-2026-10-25.json) records accepted names, overlapping rejected-field counts, disjoint blocker combinations, and dependency failures. The [audit tool](../scripts/manifest-audit/main.go) calls production compilation and full install preflight. It reads separate clean bucket checkouts and never accesses an ordinary Scoop installation. Unqualified dependencies resolve Main before Extras; other buckets are unavailable.
-
-Check out the recorded bucket revisions in independent directories, then run from the repository root with the audit tool supplied alongside this report:
+The [audit tool](../scripts/manifest-audit/main.go) calls production compilation
+and full install preflight for Windows x64. It reads separate clean bucket
+checkouts and never uses ordinary Scoop. Unqualified dependencies resolve Main
+before Extras; other buckets are unavailable. Rejected-field counts overlap;
+blocker-combination counts do not.
 
 ```powershell
 go run ./scripts/manifest-audit -main C:\audit\Main -extras C:\audit\Extras -output C:\audit\coverage.json
 ```
 
-The tool refuses dirty bucket checkouts and uncommitted compiler/backend changes. Later implementation revisions can produce different results and are recorded in the output.
+Use the pinned bucket revisions and implementation to reproduce these totals.
+The tool refuses dirty buckets and uncommitted compiler/backend changes. Later
+source revisions can produce different results and are recorded in the output.
 
-## Expansion priorities
+## Checkpoint evidence
 
-The baseline has 971 entries blocked only by URL handling, 317 by URL plus pre-install hooks, 253 by pre-install hooks alone, and 42 by post-install hooks alone. These are disjoint own-manifest blocker groups, not guaranteed additional full-preflight passes.
+| Checkpoint | Full preflight passes | Change |
+| --- | ---: | ---: |
+| [Restored baseline](evidence/manifest-coverage-baseline-2026-10-25.json) | 1,626 | — |
+| [Frozen downloads / inert EXEs](evidence/manifest-coverage-downloads-2026-10-25.json) | 2,072 | +446 |
+| [Generic ordered hooks](evidence/manifest-coverage-hooks-2026-10-25.json) | 2,150 | +78 |
+| [Managed archive readers](evidence/manifest-coverage-archives-2026-10-25.json) | 2,472 | +322 |
+| [Local copy/directory/default units](evidence/manifest-coverage-final-2026-10-25.json) | 2,517 | +45 |
 
-Priorities are deterministic download naming, safe archive formats, then reusable local hook operations. Report measured gains after each verified checkpoint. Extraction-only MSI/Inno support and alias conflicts are further candidates requiring reviewed behavior; none may be counted supported merely by bypassing their required effects.
-
-## Interpretation and historical evidence
-
-Preflight acceptance does not establish URL availability, archive contents, qualified shim handlers, app correctness, or runtime data portability. No apps are downloaded or run by the audit. Actual installs and launches require separate qualification evidence.
-
-The [1,739-entry prototype report](evidence/manifest-coverage-2026-10-25.json) and [Bitwarden VM report](bitwarden-qualification.md) belong to reverted commit `574089a`. They are explicitly historical and must not be presented as current support. The generic replacement requires a fresh audit and qualification run.
+The older [1,739-entry prototype report](evidence/manifest-coverage-2026-10-25.json)
+and [prototype Bitwarden qualification](bitwarden-qualification.md) belong to
+reverted commit `574089a`. They are historical and are not evidence for this
+implementation. The generic implementation has the fresh evidence linked above.

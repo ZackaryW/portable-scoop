@@ -26,11 +26,13 @@ verified artifact hashes.
 ## Manifest fields
 
 See [Manifest compatibility](compatibility.md) for the per-field use/rewrite/skip/reject
-contract and supported replacements. HTTP(S) ZIP payloads support declared SHA-256,
+contract and supported replacements. Supported HTTP(S) payloads use declared SHA-256,
 SHA-1, SHA-512, and MD5 digests; release integrity still requires SHA-256. Shortcut
 entries become Store-owned launch aliases. Native shims support literal fixed
-arguments. One complete persisted-file initialization hook pattern has a typed
-replacement; unknown scripts and required unsupported integration fail explicitly.
+arguments. Complete recognized hook operations compile into ordered typed
+replacements; unknown scripts and required unsupported integration fail explicitly.
+Only proven optional host imports are omitted, individually. Managed archive
+readers and inert executable retention replace external extraction helpers.
 Module discovery is unsupported, rather than silently ignored.
 
 Before install/update/uninstall, the entire dependency closure is loaded,

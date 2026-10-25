@@ -22,7 +22,12 @@ Packaging prepares the pinned backend, emits runtime/backend integrity metadata,
 
 ## Verification
 
-Tests use owned temporary roots and injected dependencies. They must never discover or modify a developer's ordinary Scoop installation. Use a disposable Windows VM for real application qualification. See [Bitwarden qualification](bitwarden-qualification.md) for the targeted script and [manifest coverage](manifest-coverage.md) for the separate static audit workflow.
+Tests use owned temporary roots and injected dependencies. They must never discover or modify a developer's ordinary Scoop installation. Use a disposable Windows VM for real application qualification. See [generic qualification](generic-qualification.md) for the scripts and [manifest coverage](manifest-coverage.md) for the separate static audit workflow.
+
+When editing PowerShell fixture scripts, run their Go wrapper with `-count=1` so
+Go's test cache cannot hide a script-only change. To include prepared-backend
+HTTP/hash and artifact checks, set `PORTSCOOP_TEST_BACKEND_PAYLOAD` to the packaged
+`backend` directory before running `go test -count=1 ./internal/backend/scoop`.
 
 Run focused tests while editing the relevant component, then the regression suite and packaging checks. A preflight audit does not replace application qualification. Self-update and remaining `pspe` scenarios have separate qualification scopes; passing the existing suite does not imply those unimplemented/deferred tests were run.
 

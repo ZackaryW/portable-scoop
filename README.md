@@ -43,9 +43,11 @@ pspe --env work rg --help    # Launch from another registered Store
 
 ## Package coverage
 
-**1,626 of 4,148 manifests pass full install preflight (39.2%).** The 2026-10-25 baseline audit covers pinned Scoop Main and Extras snapshots, Windows x64, and dependency checks. Examples include ripgrep, fd, fzf, zoxide, and SpaceSniffer.
+**2,517 of 4,148 manifests pass full install preflight (60.7%)**—891 more than the restored baseline. The audit covers pinned Scoop Main and Extras snapshots, Windows x64, and dependency checks. Generic portable operations now cover apps such as Bitwarden and SpaceSniffer, with managed ZIP, 7z and tar/gzip extraction.
 
-These are **preflight results, not 1,626 runtime-tested applications**. Work toward 70% combined Main/Extras coverage is underway through generic portable operations and broader download support. Bitwarden support is pending that implementation; the earlier app-specific prototype was reverted.
+Seven real packages received targeted VM checks, including Bitwarden, SpaceSniffer, Rufus and NUnit. The larger figure measures **preflight acceptance**, not thousands of runtime-tested apps. The 70% goal remains unmet; the coverage report explains the remaining 387-entry gap.
+
+This compatibility expansion describes the current source checkout. The internet installer downloads a published release, which may predate these changes. See the [development guide](docs/development.md) for a matching source build.
 
 Portscoop is experimental, and application execution is not sandboxed.
 [Coverage report and accepted names](docs/manifest-coverage.md) · [Compatibility rules](docs/compatibility.md)
