@@ -41,21 +41,19 @@ pspe --env work rg --help    # Launch from another registered Store
 
 [Installation options](docs/internet-install.md) · [Create multiple Stores](docs/setup.md) · [Launch options](docs/application-execution.md)
 
-## Package coverage
+## Apps that travel with you
 
-**2,517 of 4,148 manifests pass full install preflight (60.7%)**—891 more than the restored baseline. The audit covers pinned Scoop Main and Extras snapshots, Windows x64, and dependency checks. Generic portable operations now cover apps such as Bitwarden and SpaceSniffer, with managed ZIP, 7z and tar/gzip extraction.
+Bring tools such as **ripgrep, Bitwarden, and SpaceSniffer** into your portable Stores. Portscoop handles ZIP, 7z, and tar/gzip packages and keeps managed configuration and persisted data with each Store.
 
-Seven real packages received targeted VM checks, including Bitwarden, SpaceSniffer, Rufus and NUnit. The larger figure measures **preflight acceptance**, not thousands of runtime-tested apps. The 70% goal remains unmet; the coverage report explains the remaining 387-entry gap.
-
-This compatibility expansion describes the current source checkout. The internet installer downloads a published release, which may predate these changes. See the [development guide](docs/development.md) for a matching source build.
+Compatibility depends on the package's manifest. Supported setup operations run locally within the Store; unsupported required integrations are reported before installation.
 
 Portscoop is experimental, and application execution is not sandboxed.
 [Coverage report and accepted names](docs/manifest-coverage.md) · [Compatibility rules](docs/compatibility.md)
 
 ## Documentation
 
-The [documentation index](docs/README.md) covers installation, multiple Stores, application execution, updates, architecture, compatibility internals, and development. Start there for technical details and qualification evidence.
+The [documentation index](docs/README.md) covers installation, multiple Stores, application execution, updates, architecture, compatibility internals, and development.
 
 ## Develop Portscoop
 
-The coordinator is written in Go with a pinned PowerShell backend. See the [development guide](docs/development.md) to build, test, and package all three launchers: `portscoop`, `psp`, and `pspe`.
+The coordinator is written in Go with a pinned PowerShell backend. See the [development guide](docs/development.md) to build and package all three launchers: `portscoop`, `psp`, and `pspe`.
