@@ -42,6 +42,10 @@ type Frontend struct {
 // application statuses (returned unchanged without a second diagnostic).
 func (f Frontend) Run(ctx context.Context, args []string, streams application.Streams) int {
 	code, err := f.execute(ctx, args, streams)
+	return Report(code, err, streams)
+}
+
+func Report(code int, err error, streams application.Streams) int {
 	if err == nil {
 		return code
 	}

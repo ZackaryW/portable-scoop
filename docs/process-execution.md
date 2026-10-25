@@ -36,3 +36,31 @@ environment variables, shortcuts, or other host files. The pinned Scoop adapter
 and manifest policy must separately suppress or reject those effects before real
 package execution is enabled. Portscoop does not sandbox arbitrary application
 runtime behavior.
+# Application execution
+
+`pspe` uses application lifecycle handling independent of the package runner.
+See [application execution](application-execution.md) for supported handlers and
+arguments. Package handshake/protocol 1 and package containment remain unchanged.
+
+Host execution uses a separate versioned handshake over a current-user-only
+local file mailbox. The directory is atomically created with a protected DACL;
+messages are strict bounded JSON (1 MiB), and startup negotiation is bounded to
+15 seconds. No network listener is used. Only an expected Store UUID, logical
+shim, mode, arguments, and caller directory cross this boundary. There is no raw
+executable, command string, environment override, or secondary Store selector.
+
+The Store rechecks its identity under its operation lock, verifies the compatible
+managed backend, prepares relocation, validates its owned shim target, snapshots
+the child environment, and creates the application. The lock ends after startup;
+the application session does not retain it and does not capture app edits into
+the ownership inventory. Other package operations may encounter normal Windows
+file-in-use errors while an application is open.
+
+Detached startup remains owned until a commit request completes. The Store then
+acknowledges committed handoff. Before commit, control failure/cancellation cleans
+up the pending application. After commit, the app survives helper completion and
+later Host cancellation. If the acknowledgement is lost after commit may have
+occurred, the diagnostic states that the app may be running; no automatic retry
+is attempted. A missing `pspe.exe` or incompatible execution handshake requests a
+compatible Store update without changing package-management availability.
+
