@@ -133,3 +133,41 @@ func TestOrdinaryDirectoryIsNotAControlEndpoint(t *testing.T) {
 		t.Fatal("inherited DACL accepted as private")
 	}
 }
+
+func TestPrivateSecurityDescriptorUsesSIDIdentity(t *testing.T) {
+	sid, err := windows.StringToSid("S-1-5-18")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// SYSTEM is a deterministic alias regression without changing accounts or
+	// granting permissions on disk. Administrator SIDs can abbreviate as LA too.
+	for _, tc := range []struct {
+		name, sddl string
+		valid      bool
+	}{
+		{"abbreviated SID", "O:S-1-5-18D:P(A;OICI;FA;;;S-1-5-18)", true},
+		{"extra principal", "O:SYD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;WD)", false},
+		{"wrong trustee", "O:SYD:P(A;OICI;FA;;;WD)", false},
+		{"wrong owner", "O:BAD:P(A;OICI;FA;;;SY)", false},
+		{"unprotected", "O:SYD:(A;OICI;FA;;;SY)", false},
+		{"empty ACL", "O:SYD:P", false},
+		{"null ACL", "O:SYD:PNO_ACCESS_CONTROL", false},
+		{"partial access", "O:SYD:P(A;OICI;FR;;;SY)", false},
+		{"no inheritance", "O:SYD:P(A;;FA;;;SY)", false},
+		{"inherit only", "O:SYD:P(A;OICIIO;FA;;;SY)", false},
+		{"deny entry", "O:SYD:P(D;OICI;FA;;;SY)", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			sd, err := windows.SecurityDescriptorFromString(tc.sddl)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tc.valid && !strings.Contains(sd.String(), ";;;SY)") {
+				t.Fatal("fixture did not exercise SDDL SID abbreviation:", sd.String())
+			}
+			if err := validateSecurityDescriptor(sd, sid); (err == nil) != tc.valid {
+				t.Fatalf("valid=%t descriptor=%s error=%v", tc.valid, sd.String(), err)
+			}
+		})
+	}
+}

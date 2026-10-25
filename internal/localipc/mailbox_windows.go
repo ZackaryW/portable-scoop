@@ -127,6 +127,10 @@ func validateDirectory(dir string) error {
 	if err != nil {
 		return err
 	}
+	return validateSecurityDescriptor(sd, sid)
+}
+
+func validateSecurityDescriptor(sd *windows.SECURITY_DESCRIPTOR, sid *windows.SID) error {
 	owner, _, err := sd.Owner()
 	if err != nil || owner == nil || !windows.EqualSid(owner, sid) {
 		return fmt.Errorf("execution transport has another owner")
@@ -135,10 +139,24 @@ func validateDirectory(dir string) error {
 	if err != nil || control&windows.SE_DACL_PROTECTED == 0 {
 		return fmt.Errorf("execution transport DACL is not protected")
 	}
-	// This canonical DACL has one full-control inheritable ACE for this user.
-	// Inspect its SDDL rather than treating a nil/empty permissive ACL as private.
-	dacl := strings.SplitN(sd.String(), "D:", 2)
-	if len(dacl) != 2 || dacl[1] != "P(A;OICI;FA;;;"+sid.String()+")" {
+	// SDDL can abbreviate the same SID (for example, the local administrator
+	// as LA). Validate the actual ACE rather than its display representation.
+	dacl, _, err := sd.DACL()
+	if err != nil || dacl == nil || dacl.AceCount != 1 {
+		return fmt.Errorf("execution transport DACL is not current-user-only")
+	}
+	var ace *windows.ACCESS_ALLOWED_ACE
+	if err := windows.GetAce(dacl, 0, &ace); err != nil {
+		return fmt.Errorf("inspect execution transport DACL: %w", err)
+	}
+	const fullControl windows.ACCESS_MASK = 0x001f01ff // FILE_ALL_ACCESS
+	if ace.Header.AceType != windows.ACCESS_ALLOWED_ACE_TYPE ||
+		ace.Header.AceFlags != windows.OBJECT_INHERIT_ACE|windows.CONTAINER_INHERIT_ACE ||
+		ace.Mask != fullControl {
+		return fmt.Errorf("execution transport DACL is not current-user-only")
+	}
+	trustee := (*windows.SID)(unsafe.Pointer(&ace.SidStart))
+	if !trustee.IsValid() || !windows.EqualSid(trustee, sid) {
 		return fmt.Errorf("execution transport DACL is not current-user-only")
 	}
 	return nil

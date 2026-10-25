@@ -44,6 +44,9 @@ arguments. Package handshake/protocol 1 and package containment remain unchanged
 
 Host execution uses a separate versioned handshake over a current-user-only
 local file mailbox. The directory is atomically created with a protected DACL;
+validation checks the owner and the single inheritable full-control ACE by SID
+identity, since Windows can abbreviate the same SID in SDDL display text. Null,
+empty, inherited, or additional-principal ACLs remain invalid. Control
 messages are strict bounded JSON (1 MiB), and startup negotiation is bounded to
 15 seconds. No network listener is used. Only an expected Store UUID, logical
 shim, mode, arguments, and caller directory cross this boundary. There is no raw
