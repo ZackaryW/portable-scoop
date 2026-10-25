@@ -1,0 +1,95 @@
+{
+  "payload_sha256": "28890593ea6b1156ca93cd79622fce4e8c1740bfdbe6ee907e3190ec7c3f51d3",
+  "tool_sha256": "94205cfc054dd3bbeb978905bc619a65b3f04e9e73bb2717841110b6f46d962e",
+  "library_sha256": "78bf6b668d75801e3aa180b4ccb16e6d8395fba80dec8a065055bb6f8dfabb82",
+  "members": [
+    {
+      "path": "$0\\spltmp.bmp",
+      "size": 0
+    },
+    {
+      "path": "$PLUGINSDIR\\modern-wizard.bmp",
+      "size": 221616
+    },
+    {
+      "path": "$PLUGINSDIR\\potple.bmp",
+      "size": 221616
+    },
+    {
+      "path": "$PLUGINSDIR\\modern-header.bmp",
+      "size": 37156
+    },
+    {
+      "path": "Logos\\PotPlayer.png",
+      "size": 8456
+    },
+    {
+      "path": "Logos\\PotPlayer.png",
+      "size": 8770
+    },
+    {
+      "path": "$0\\spltmp.bmp",
+      "size": 259424
+    },
+    {
+      "path": "$0\\spltmp.bmp",
+      "size": 259424
+    },
+    {
+      "path": "$PLUGINSDIR\\modern-wizard.bmp",
+      "size": 204784
+    },
+    {
+      "path": "$PLUGINSDIR\\potple.bmp",
+      "size": 204784
+    },
+    {
+      "path": "$PLUGINSDIR\\modern-header.bmp",
+      "size": 34256
+    },
+    {
+      "path": "uninstall.exe",
+      "size": null
+    }
+  ],
+  "streams": [
+    {
+      "path": "$0\\spltmp.bmp",
+      "bytes": 518848,
+      "sha256": "e184d2fdfe21cb9871a33ffb944894be0073490f9918c4fe0ec4f91ac279567c"
+    },
+    {
+      "path": "$PLUGINSDIR\\modern-wizard.bmp",
+      "bytes": 426400,
+      "sha256": "f69b73c4d1f28b5306e6c5e4ec2e86c70f0f647f61febf670fd380030e59893b"
+    },
+    {
+      "path": "$PLUGINSDIR\\potple.bmp",
+      "bytes": 426400,
+      "sha256": "f69b73c4d1f28b5306e6c5e4ec2e86c70f0f647f61febf670fd380030e59893b"
+    },
+    {
+      "path": "$PLUGINSDIR\\modern-header.bmp",
+      "bytes": 71412,
+      "sha256": "88014c50765e7a78da4f89aa89b5a0ecd851addf00f9a19f5305ea5d9b448f6b"
+    },
+    {
+      "path": "Logos\\PotPlayer.png",
+      "bytes": 17226,
+      "sha256": "c2c18465caa65f6a4735cf579544c9450d3fc2dd58a7a814a13e9192f8cf364d"
+    },
+    {
+      "path": "uninstall.exe",
+      "bytes": 241929,
+      "sha256": "ed8033f46601b56b0f3fe94f08e430e52e0f4046ce2cd15f764490af53089512"
+    }
+  ],
+  "total_listed_members": 206,
+  "observed_utc_date": "2026-10-25",
+  "platform": "Windows x64 disposable VMware guest",
+  "tool_version": "7-Zip 26.05",
+  "tool_artifact_url": "https://github.com/ip7z/7zip/releases/download/26.05/7z2605-x64.exe",
+  "tool_artifact_sha256": "fd99e86f57d8f429ef5ed045bf98315af962e2309b0f1ba87a147a44c71647d0",
+  "payload_url": "https://t1.daumcdn.net/potplayer/PotPlayer/Version/261021/PotPlayerSetup64.exe",
+  "scope": "Exceptional paths only; no installer execution, installation qualification, or approved duplicate-selection policy."
+}
