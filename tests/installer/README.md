@@ -59,3 +59,6 @@ all network cmdlets real. It accepts the current-folder defaults for both Host
 and Store, also installs a Store through the matching tag, and checks central
 delegation. It restores the guest user PATH and retains installed
 files and a transcript. See [live release evidence](evidence/live-0.1.0.json).
+The [current-folder default qualification](evidence/cwd-defaults.json) records
+accepting Enter for both installation roles with the updated main-branch worker
+and the existing verified binary release.

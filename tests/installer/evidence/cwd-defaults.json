@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "qualified_at_utc": "2026-10-25T02:02:23.3657196Z",
+  "status": "passed",
+  "bootstrap_source_commit": "44ec3c970b3159b718aacd09a4089f300552e5ad",
+  "binary_release_tag": "v0.1.0",
+  "binary_release_commit": "ad0ba6b8e67622df0fe027bf3f2d095e0ece179a",
+  "binary_release_sha256": "2ddd0886edbe22a446337a1b60d248d2894dc8ea985074c777d1ff57742bda07",
+  "workflow_run": "https://github.com/ZackaryW/portable-scoop/actions/runs/40152823188",
+  "download_source": "Real GitHub main/tagged raw scripts and latest/versioned release assets; only wizard console answers were automated",
+  "guest": {
+    "status": "passed",
+    "root": "C:\\Users\\Public\\PortscoopLive-b7fae7f443794b42b724cfaf83b168e3",
+    "release": "0.1.0",
+    "windows": "10.0.26200.0",
+    "powershell": "5.1.26100.6584",
+    "go_absent": true,
+    "checks": [
+      "Live Host wizard Enter installs directly in CWD; latest ZIP/checksum, exact host PATH entry and immediate psp env list",
+      "Live tagged entry/worker/release, Store initialization, explicit registration/default, direct execution and central delegation",
+      "Live Store wizard Enter installs directly in CWD, no AppData deployment, caller PATH preserved and both independent stores registered",
+      "Scoop sentinel and user/machine environment unchanged after restoring test PATH"
+    ],
+    "error": null
+  },
+  "physical_host": {
+    "tracked_scoop_files": 223,
+    "changed_files": [],
+    "user_environment_unchanged": true,
+    "machine_environment_unchanged": true
+  },
+  "sources_sha256_lf": {
+    "scripts/install.ps1": "61dde737dd44e9c1019238f88efccc33cc6a0458ddecee7bb1c3891915119f66",
+    "tests/installer/qualify-live.ps1": "5f97daa4e4b85414a2dfa7e9e81f7426e02048feff18291dda81058034ea4d12"
+  }
+}
