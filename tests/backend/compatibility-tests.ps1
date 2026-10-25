@@ -62,6 +62,43 @@ Assert ([IO.File]::ReadAllText("$outside\config.xml") -ceq 'sentinel') 'Reparse 
 # Missing persistence is normal; no persistence directory is created by the hook.
 Invoke-PortscoopAction $action 'newapp' '1.0' (New-Item -ItemType Directory -Path "$Root\scoop\apps\newapp\1.0" -Force).FullName "$Root\scoop\persist\newapp"
 Assert ([IO.File]::Exists("$Root\scoop\apps\newapp\1.0\config.xml")) 'Missing persistence failed'
+
+# A frozen rename is executed without evaluating the original mixed hook.
+# Host-profile sentinel stays in this test root; real AppData is never accessed.
+$rename = [pscustomobject]@{phase='pre_install';kind='rename-package-file';source='Bitwarden-Portable-1.0.exe';path='Bitwarden.exe'}
+$portscoopRequest.manifests.fixture.actions = @($rename)
+[IO.File]::WriteAllText("$dir\Bitwarden-Portable-1.0.exe", 'inert executable fixture')
+$fakeProfile = Join-Path $Root 'host-profile\Bitwarden'
+New-Item -ItemType Directory -Path $fakeProfile -Force | Out-Null
+[IO.File]::WriteAllText("$fakeProfile\data.json",'host profile sentinel')
+$priorAppData = $env:APPDATA
+try {
+    $env:APPDATA = Split-Path -Parent $fakeProfile
+    Invoke-HookScript pre_install $manifest 64bit
+    Assert ([IO.File]::ReadAllText("$dir\Bitwarden.exe") -ceq 'inert executable fixture') 'Rename changed content'
+    Assert (-not [IO.File]::Exists("$dir\Bitwarden-Portable-1.0.exe")) 'Rename left source'
+    Assert (-not (Test-Path -LiteralPath "$dir\bitwarden-appdata")) 'Host profile imported'
+    Assert ([IO.File]::ReadAllText("$fakeProfile\data.json") -ceq 'host profile sentinel') 'Host profile changed'
+} finally { $env:APPDATA = $priorAppData }
+Reject { Invoke-HookScript pre_install $manifest 64bit } # missing source
+[IO.File]::WriteAllText("$dir\Bitwarden-Portable-1.0.exe", 'second source')
+Reject { Invoke-HookScript pre_install $manifest 64bit } # existing destination
+Assert ([IO.File]::ReadAllText("$dir\Bitwarden.exe") -ceq 'inert executable fixture') 'Rename overwrote destination'
+Assert ([IO.File]::ReadAllText("$dir\Bitwarden-Portable-1.0.exe") -ceq 'second source') 'Rejected rename changed source'
+$rename.path = 'new.exe'; $rename.source = '..\escape.exe'
+Reject { Invoke-HookScript pre_install $manifest 64bit }
+$rename.source = 'NUL.exe'
+Reject { Invoke-HookScript pre_install $manifest 64bit }
+$rename.source = 'source-directory'
+New-Item -ItemType Directory -Path "$dir\source-directory" | Out-Null
+Reject { Invoke-HookScript pre_install $manifest 64bit }
+$rename.source = 'Bitwarden-Portable-1.0.exe'
+New-Item -ItemType Junction -Path $linkVersion -Target $outside | Out-Null
+Reject { Invoke-PortscoopAction $rename $app '2.0' $linkVersion $persist_dir }
+[IO.Directory]::Delete($linkVersion)
+New-Item -ItemType Junction -Path "$dir\new.exe" -Target $outside | Out-Null
+Reject { Invoke-HookScript pre_install $manifest 64bit }
+[IO.Directory]::Delete("$dir\new.exe")
 if ($Backend) {
     # Load only the pinned backend's hash functions, without its module startup
     # or any package hooks. The input is a prepared, verified build artifact.

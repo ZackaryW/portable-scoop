@@ -54,7 +54,7 @@ func TestManifestSubset(t *testing.T) {
 		{"env_set": map[string]string{"GIT_DIR": "$dir"}},
 		{"env_set": map[string]string{"TOOL_HOME": "one", "tool_home": "two"}},
 		{"env_set": map[string]string{"TOOL_HOME": "`$dir"}},
-		{"hash": "skip"}, {"url": "https://example.test/setup.exe"}, {"version": "nightly"},
+		{"hash": "skip"}, {"url": "https://example.test/setup.exe", "installer": map[string]string{"file": "setup.exe"}}, {"version": "nightly"},
 	}
 	for i, extra := range badFields {
 		t.Run(fmt.Sprint(i), func(t *testing.T) {

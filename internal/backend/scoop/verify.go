@@ -13,7 +13,7 @@ import (
 )
 
 const UpstreamRevision = "e6aa3b366bdee8ed138c1e0f7b85192ebdd35d0f"
-const PatchRevision = "portable-fields-v1.0"
+const PatchRevision = "portable-fields-v1.1"
 const MetadataRelative = ".portscoop/backend/backend.json"
 
 // Verify covers every shipped engine/adapter file, including additions. Scoop

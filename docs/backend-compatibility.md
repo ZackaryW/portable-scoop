@@ -69,7 +69,7 @@ environment persistence, suppressed shortcuts/modules, preserved package data,
 and unchanged guest host-state and ordinary-Scoop sentinels. This is the adapter
 fixture; full CLI, two-environment, and release qualification remain in group 9.
 
-## Adapter revision portable-fields-v1.0
+## Adapter revision portable-fields-v1.1
 
 `scripts/prepare-backend.ps1` verifies the upstream inputs, uses PowerShell's AST
 to replace named functions at recorded patch sites, and emits every resulting

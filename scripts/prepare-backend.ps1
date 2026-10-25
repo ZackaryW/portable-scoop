@@ -57,6 +57,6 @@ Get-ChildItem -LiteralPath $engine -File -Recurse | Sort-Object FullName | ForEa
 Get-ChildItem -LiteralPath $adapter -File | Sort-Object FullName | ForEach-Object {
     $artifacts[".portscoop/backend/$($_.Name)"] = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
 }
-$metadata = @{ schema_version=1; protocol_major=1; upstream_revision=$pin.upstream_revision; patch_revision='portable-fields-v1.0'; artifacts=$artifacts } | ConvertTo-Json -Depth 5
+$metadata = @{ schema_version=1; protocol_major=1; upstream_revision=$pin.upstream_revision; patch_revision='portable-fields-v1.1'; artifacts=$artifacts } | ConvertTo-Json -Depth 5
 [IO.File]::WriteAllText((Join-Path $Destination 'backend.json'),$metadata,(New-Object Text.UTF8Encoding($false)))
 Write-Output $Destination
