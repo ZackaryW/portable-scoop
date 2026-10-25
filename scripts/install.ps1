@@ -7,6 +7,8 @@ param(
     [string]$Name,
     [switch]$AddToPath,
     [switch]$NoPath,
+    [switch]$CreateDefaultStore,
+    [switch]$NoDefaultStore,
     [string]$Version,
     [string]$RegisterAs,
     [switch]$SetDefault,
@@ -15,6 +17,7 @@ param(
 $ErrorActionPreference='Stop'
 if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT -or -not [Environment]::Is64BitProcess -or $env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { throw 'Portscoop requires Windows x64 and a 64-bit PowerShell session' }
 if ($AddToPath -and $NoPath) { throw 'Choose AddToPath or NoPath, not both' }
+if ($CreateDefaultStore -and $NoDefaultStore) { throw 'Choose CreateDefaultStore or NoDefaultStore, not both' }
 if ($SetDefault -and -not $RegisterAs) { throw 'SetDefault requires RegisterAs' }
 if ($RegisterAs -and $RegisterAs -notmatch '^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$') { throw 'RegisterAs must be a valid host alias' }
 if ($Version -and $Version -notmatch '^v?[0-9][0-9A-Za-z._+-]*$') { throw 'Invalid release version' }
@@ -30,6 +33,7 @@ if ($wizard) {
 }
 if ($Mode -eq 'Host' -and ($RegisterAs -or $SetDefault -or $Name)) { throw 'Name and registration options apply only to Store setup' }
 if ($Mode -eq 'Store' -and $AddToPath) { throw 'Store setup does not add portable paths to the host PATH' }
+if ($Mode -eq 'Store' -and ($CreateDefaultStore -or $NoDefaultStore)) { throw 'Default Store bootstrap options apply only to Host setup' }
 if (-not $Destination) {
     $default=(Get-Location).ProviderPath
     if ($NonInteractive) { $Destination=$default } else {
@@ -47,6 +51,11 @@ if ($Mode -eq 'Store' -and -not $Name) {
 if ($Mode -eq 'Host' -and $wizard -and -not $PSBoundParameters.ContainsKey('AddToPath') -and -not $NoPath) {
     do{$answer=Read-Host 'Add the host launcher to your user PATH? [Y/n]'}until($answer -in @('','y','yes','n','no'))
     $AddToPath=$answer -in @('','y','yes')
+}
+if ($Mode -eq 'Host' -and -not $NonInteractive -and -not $PSBoundParameters.ContainsKey('CreateDefaultStore') -and -not $NoDefaultStore) {
+    $firstStore=Join-Path $Destination 'store'
+    do{$answer=Read-Host "Create a first default Store in '$firstStore'? [Y/n]"}until($answer -in @('','y','yes','n','no'))
+    $CreateDefaultStore=$answer -in @('','y','yes')
 }
 $powerShell=Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
 if(-not(Test-Path -LiteralPath $powerShell -PathType Leaf)){throw 'Windows PowerShell 5.1 is required'}
@@ -95,9 +104,13 @@ try {
     foreach($required in @('setup.ps1','release.json','portscoop.exe','psp.exe','backend\backend.json')){
         if(-not(Test-Path -LiteralPath (Join-Path $payload $required) -PathType Leaf)){throw "Release payload is missing $required"}
     }
+    $supportsBootstrap=(Get-Command (Join-Path $payload 'setup.ps1')).Parameters.ContainsKey('CreateDefaultStore')
+    if($CreateDefaultStore-and-not$supportsBootstrap){
+        throw 'This release does not support first default Store setup. Choose a newer release with that feature, or use -NoDefaultStore.'
+    }
     # Keep folder/name values in JSON rather than interpolating PowerShell code
     # or relying on Windows PowerShell's native argument reconstruction.
-    $settings=@{setup=(Join-Path $payload 'setup.ps1');mode=$(if($Mode-eq'Host'){'Central'}else{'Portable'});destination=$Destination;name=$Name;add_to_path=[bool]$AddToPath}
+    $settings=@{setup=(Join-Path $payload 'setup.ps1');mode=$(if($Mode-eq'Host'){'Central'}else{'Portable'});destination=$Destination;name=$Name;add_to_path=[bool]$AddToPath;create_default_store=[bool]$CreateDefaultStore}
     $settingsFile=Join-Path $temporary 'settings.json'
     [IO.File]::WriteAllText($settingsFile,($settings|ConvertTo-Json),(New-Object Text.UTF8Encoding($false)))
     $runner=Join-Path $temporary 'run-setup.ps1'
@@ -108,6 +121,7 @@ $settings=Get-Content -LiteralPath $SettingsFile -Raw -Encoding UTF8|ConvertFrom
 $parameters=@{Mode=$settings.mode;Destination=$settings.destination}
 if($settings.name){$parameters.Name=$settings.name}
 if($settings.add_to_path){$parameters.AddToPath=$true}
+if($settings.create_default_store){$parameters.CreateDefaultStore=$true}
 & $settings.setup @parameters
 '@
     [IO.File]::WriteAllText($runner,$runnerSource,(New-Object Text.UTF8Encoding($false)))
@@ -125,7 +139,7 @@ if($settings.add_to_path){$parameters.AddToPath=$true}
     }
     Write-Host "Portscoop $Mode is ready at $Destination" -ForegroundColor Green
     if($Mode-eq'Host'){
-        Write-Host 'Next: create/register a store and choose its default with env init/register/default.'
+        if($CreateDefaultStore){Write-Host 'The first default Store is configured; any existing default selection was preserved.'}elseif($supportsBootstrap){Write-Host 'Later: run psp env bootstrap to create a first default Store in the store subfolder.'}else{Write-Host 'Next: create/register a store and choose its default with env init/register/default.'}
         Write-Host ('Run: & "'+$exe+'" env list')
     }else{
         Write-Host ('Run: & "'+$exe+'" list')

@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "qualified_at_utc": "2026-10-25T02:16:52.3406401Z",
+  "status": "passed",
+  "release_version": "0.1.1-dev.2",
+  "release_sha256": "20a03acc765d9f6ae4280a19b023b4fe4b1abe4d962b083af3ad68f875cbfe1c",
+  "publication": "Local build only; no commits, tags, or assets were pushed",
+  "download_source": "GitHub-shaped requests redirected to the actual locally built release; setup and first Store commands are real",
+  "guest": {
+    "status": "passed",
+    "root": "C:\\Users\\Public\\PortscoopFirstStore-aaeb0fb4bede4c9b968f128d2c892f5e",
+    "powershell": "5.1.26100.6584",
+    "go_absent": true,
+    "checks": [
+      "Host wizard Yes creates the store subfolder, registers/selects default, and supports central and direct commands without PATH changes",
+      "Repeated bootstrap preserves selection; mutable default Store does not block creation of additional independent Stores",
+      "Another Host with bootstrap requested preserves the existing default and creates no extra Store",
+      "Host wizard No leaves a Host-only deployment without a Store or registration",
+      "Scoop sentinel and user/machine environment unchanged"
+    ],
+    "error": null
+  },
+  "physical_host": {
+    "tracked_scoop_files": 223,
+    "changed_files": [],
+    "user_environment_unchanged": true,
+    "machine_environment_unchanged": true
+  },
+  "sources_sha256_lf": {
+    "get.ps1": "78038dd4d3776e62b0f8475be62e56557564a7e3ae43a7e6b5e1b9e03b0c1d8e",
+    "scripts/install.ps1": "fc2d97376627bf6d20846ea75f84990a79c62f72cf72697f6fc066886aa9cbd0",
+    "scripts/setup.ps1": "a3dd3f6303284eca99cc9811125475e5c8c32d9832a02ae11de64795426962bf",
+    "tests/installer/qualify-host-bootstrap.ps1": "353603289555b00f59999aa65d9596107d8d925b1c8ce6eb09f2c68aa8150194"
+  }
+}

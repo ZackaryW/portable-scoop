@@ -28,6 +28,8 @@ independent portable environment. Press Enter at the destination prompt to
 install directly in your current folder. Store initialization requires local
 NTFS. No Go compiler or existing
 Scoop installation is required. Repeat Store setup for additional environments.
+Host setup offers to create and select a first default Store in its `store`
+subfolder. Accept Yes to start using that Store through the Host immediately.
 See [internet installation](docs/internet-install.md) for scripted destinations,
 version selection, and registration with a Host.
 

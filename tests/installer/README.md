@@ -62,3 +62,11 @@ files and a transcript. See [live release evidence](evidence/live-0.1.0.json).
 The [current-folder default qualification](evidence/cwd-defaults.json) records
 accepting Enter for both installation roles with the updated main-branch worker
 and the existing verified binary release.
+
+`qualify-host-bootstrap.ps1` uses the same local bundle layout as
+`qualify-release.ps1` to exercise first-Store setup in the disposable guest.
+It accepts Yes and No through the actual Host wizard, checks registration and
+default delegation, preserves an existing default, and creates an additional
+Store after the nested default Store contains mutable data. Downloads are
+redirected to the supplied local release; deployment and Store commands are
+real. See [first-Store evidence](evidence/first-default-store.json).

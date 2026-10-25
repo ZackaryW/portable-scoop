@@ -26,6 +26,12 @@ non-empty directories. `-AddToPath` changes only the requested central directory
 user-PATH entry; open a new terminal afterward. Without that option, invoke the
 central executable by its full path.
 
+To create the first default Store automatically during central setup, add
+`-CreateDefaultStore`. This initializes the Host's `store` subfolder and selects
+its `default` registration. After Host-only setup, `psp env bootstrap` performs
+the same operation. Existing defaults are preserved. Package catalogs can then
+be added with `psp bucket add`.
+
 Create two portable environments without changing host PATH or registrations:
 
 ```powershell

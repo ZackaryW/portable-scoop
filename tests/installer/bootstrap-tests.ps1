@@ -11,11 +11,12 @@ $payload=Join-Path $root 'payload'
 New-Item -ItemType Directory -Path "$payload\backend" -Force|Out-Null
 $stub=@'
 [CmdletBinding()]
-param([string]$Mode,[string]$Destination,[string]$Name,[switch]$AddToPath)
+param([string]$Mode,[string]$Destination,[string]$Name,[switch]$AddToPath,[switch]$CreateDefaultStore)
 $ErrorActionPreference='Stop'
 if(-not$Destination.StartsWith(($env:PORTSCOOP_TEST_ROOT.TrimEnd('\')+'\'),[StringComparison]::OrdinalIgnoreCase)){throw 'Test setup destination escaped fixture root'}
 New-Item -ItemType Directory -Path $Destination -Force|Out-Null
-$receipt=@{mode=$Mode;destination=$Destination;name=$Name;add_to_path=[bool]$AddToPath}
+if($CreateDefaultStore){New-Item -ItemType Directory -Path (Join-Path $Destination 'store')|Out-Null}
+$receipt=@{mode=$Mode;destination=$Destination;name=$Name;add_to_path=[bool]$AddToPath;create_default_store=[bool]$CreateDefaultStore}
 [IO.File]::WriteAllText($env:PORTSCOOP_TEST_RECEIPT,($receipt|ConvertTo-Json),(New-Object Text.UTF8Encoding($false)))
 '@
 [IO.File]::WriteAllText((Join-Path $payload 'setup.ps1'),$stub)
@@ -98,6 +99,7 @@ try {
             $choice=if($setupMode-eq'Host'){'1'}else{'2'}
             $lastAnswer=if($setupMode-eq'Host'){'n'}else{''}
             foreach($answer in @($choice,'',$lastAnswer)){$global:PortscoopInstallerTest.answers.Enqueue($answer)}
+            if($setupMode-eq'Host'){$global:PortscoopInstallerTest.answers.Enqueue('n')}
             & {Invoke-Expression ([IO.File]::ReadAllText($entry))}
             $receipt=Get-Content -LiteralPath $env:PORTSCOOP_TEST_RECEIPT -Raw|ConvertFrom-Json
             $expectedMode=if($setupMode-eq'Host'){'Central'}else{'Portable'}
@@ -118,6 +120,20 @@ try {
         }finally{Pop-Location}
     }
     $passed.Add('Host and Store wizard Enter defaults to exact CWD; scripted omission also uses CWD')
+
+    $destination=Join-Path $root 'host with first store'
+    foreach($answer in @('1',$destination,'n','')){$global:PortscoopInstallerTest.answers.Enqueue($answer)}
+    & {Invoke-Expression ([IO.File]::ReadAllText($entry))}
+    $receipt=Get-Content -LiteralPath $env:PORTSCOOP_TEST_RECEIPT -Raw|ConvertFrom-Json
+    Assert ($receipt.create_default_store-and(Test-Path -LiteralPath (Join-Path $destination 'store'))) 'Host wizard did not opt into first Store bootstrap'
+    Assert ($global:PortscoopInstallerTest.answers.Count-eq 0) 'First Store prompt did not consume Enter'
+    & $entry -Mode Host -Destination (Join-Path $root 'scripted first store') -CreateDefaultStore -NonInteractive
+    $receipt=Get-Content -LiteralPath $env:PORTSCOOP_TEST_RECEIPT -Raw|ConvertFrom-Json
+    Assert $receipt.create_default_store 'Scripted bootstrap flag was lost'
+    & $entry -Mode Host -Destination (Join-Path $root 'host without first store') -NoDefaultStore -NonInteractive
+    $receipt=Get-Content -LiteralPath $env:PORTSCOOP_TEST_RECEIPT -Raw|ConvertFrom-Json
+    Assert (-not$receipt.create_default_store) 'Host opt-out created a Store'
+    $passed.Add('Host wizard Yes/Enter bootstraps first Store, No opts out, and scripted flags are forwarded')
 
     $destination=Join-Path $root 'existing'
     New-Item -ItemType Directory -Path $destination|Out-Null
@@ -153,8 +169,27 @@ try {
     $global:PortscoopInstallerTest.archive=$archive
     $passed.Add('ZIP traversal rejected before extraction')
 
+    $legacy=Join-Path $root 'legacy.zip'
+    Copy-Item -LiteralPath $archive -Destination $legacy
+    $zip=[IO.Compression.ZipFile]::Open($legacy,[IO.Compression.ZipArchiveMode]::Update)
+    try{
+        $setupEntry=@($zip.Entries|Where-Object {$_.FullName.Replace('\','/')-eq'setup.ps1'})[0]
+        $setupEntry.Delete()
+        $setupEntry=$zip.CreateEntry('setup.ps1')
+        $writer=New-Object IO.StreamWriter($setupEntry.Open())
+        try{$writer.Write('param([string]$Mode,[string]$Destination)') }finally{$writer.Dispose()}
+    }finally{$zip.Dispose()}
+    $global:PortscoopInstallerTest.archive=$legacy
+    $legacyTarget=Join-Path $root 'legacy host'
+    Expect-Failure {& $entry -Mode Host -Destination $legacyTarget -CreateDefaultStore -NonInteractive} 'does not support first default Store'
+    Assert (-not(Test-Path -LiteralPath $legacyTarget)) 'Unsupported release created a Host destination'
+    $global:PortscoopInstallerTest.archive=$archive
+    $passed.Add('older releases fail clearly before deployment when first Store bootstrap is requested')
+
     Expect-Failure {& $worker -Mode Store -Destination (Join-Path $root 'invalid options') -AddToPath -NonInteractive} 'does not add'
     Expect-Failure {& $worker -Mode Host -Destination (Join-Path $root 'invalid options') -RegisterAs work -NonInteractive} 'only to Store'
+    Expect-Failure {& $worker -Mode Store -Destination (Join-Path $root 'invalid options') -CreateDefaultStore -NonInteractive} 'only to Host'
+    Expect-Failure {& $worker -Mode Host -Destination (Join-Path $root 'invalid options') -CreateDefaultStore -NoDefaultStore -NonInteractive} 'not both'
     Expect-Failure {& $worker -NonInteractive} 'requires Mode'
     Expect-Failure {& $entry -Mode Host -Destination (Join-Path $root 'invalid tag') -Version '../main'} 'Invalid release'
     $passed.Add('mode-specific options and unsafe versions rejected')

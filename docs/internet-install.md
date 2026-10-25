@@ -30,6 +30,25 @@ choice, `psp` and `portscoop` work immediately in this console and in newly open
 consoles. Otherwise use the executable's full path. Store setup leaves PATH
 alone; invoke its `psp.exe` directly or register it with a Host.
 
+Host setup also asks **Create a first default Store? [Y/n]**. Yes (or Enter)
+creates `store` inside the Host folder, registers it as `default`, and selects
+it. You can immediately run package commands through that Host without manually
+initializing, registering, and selecting a Store. No leaves a Host-only setup.
+An existing default selection is kept and no additional Store is created.
+
+For example, accepting Yes when installing into `F:\Portscoop` produces:
+
+```text
+F:\Portscoop\psp.exe
+F:\Portscoop\store\psp.exe
+F:\Portscoop\store\scoop\apps\...
+```
+
+The Store remains independent and can also run directly. After opting out, run
+`psp env bootstrap` from the Host to create its first default Store later.
+Adding package catalogs still uses `psp bucket add`; see [setup](setup.md) for
+the standalone Git prerequisite.
+
 For explicit options, run the downloaded script in a child scope:
 
 ```powershell
@@ -47,7 +66,15 @@ psp --env personal list
 ```
 
 In scripted Host setup, PATH changes require `-AddToPath`. `-NoPath` also skips
-the interactive PATH question. Store setup can explicitly register itself with
+the interactive PATH question. `-CreateDefaultStore` opts into first-Store
+bootstrap, and `-NoDefaultStore` skips its interactive question. Noninteractive
+Host setup creates a Store only with `-CreateDefaultStore`. These flags apply
+only to Host setup. Manual archive setup supports
+`setup.ps1 -Mode Central -Destination <folder> -CreateDefaultStore` as well.
+This feature requires a release containing `env bootstrap` and the corresponding
+setup option; the published 0.1.0 payload does not support it.
+
+Store setup can explicitly register itself with
 `-RegisterAs work -SetDefault`; registration is never implicit. `-SetDefault`
 requires `-RegisterAs`. `-NonInteractive` requires a mode; omitting `-Destination`
 installs directly in the current folder without a destination prompt. Relative

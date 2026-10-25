@@ -6,6 +6,8 @@ param(
     [string]$Name,
     [switch]$AddToPath,
     [switch]$NoPath,
+    [switch]$CreateDefaultStore,
+    [switch]$NoDefaultStore,
     [string]$Version,
     [string]$RegisterAs,
     [switch]$SetDefault,
