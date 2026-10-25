@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "qualified_at_utc": "2026-10-25T00:36:30.8989084+00:00",
+  "release_version": "0.1.0-dev.7",
+  "release_archive": "portscoop-0.1.0-dev.7-windows-amd64.zip",
+  "release_sha256": "3a1eaea877ff076b88f6a7e66ad862b1e2841bc89dd777f40dbaf5c3e07bdb79",
+  "upstream_revision": "e6aa3b366bdee8ed138c1e0f7b85192ebdd35d0f",
+  "patch_revision": "portable-zip-v1.1",
+  "guest_report": "release-windows.json",
+  "host_report": "host-final-comparison.json",
+  "git_prerequisite": {
+    "version": "v2.56.0.windows.3",
+    "name": "MinGit-2.56.0.3-64-bit.zip",
+    "digest": "sha256:2e5619966e588fde5f8122c5557cad50c0fbafcaed736689f40ec1dfb1d78ea7",
+    "release_url": "https://github.com/git-for-windows/git/releases/tag/v2.56.0.windows.3",
+    "url": "https://github.com/git-for-windows/git/releases/download/v2.56.0.windows.3/MinGit-2.56.0.3-64-bit.zip"
+  },
+  "checks": [
+    "go test ./... -count=1 with generated payload verification",
+    "go vet ./...",
+    "Windows VMware release matrix and five standalone test binaries",
+    "Windows x64 release packaging and both CLI names from CMD/PowerShell",
+    "strict OpenSpec validation"
+  ]
+}

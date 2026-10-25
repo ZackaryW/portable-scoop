@@ -1,0 +1,17 @@
+﻿{
+    "schema_version":  1,
+    "status":  "passed",
+    "error":  null,
+    "installed":  true,
+    "persisted":  true,
+    "portable_environment_saved":  true,
+    "shortcut_suppressed":  true,
+    "module_suppressed":  true,
+    "updated":  true,
+    "removed":  true,
+    "environment_removed":  true,
+    "persistence_survived":  true,
+    "other_root_unchanged":  true,
+    "ordinary_scoop_unchanged":  true,
+    "host_state_unchanged":  true
+}

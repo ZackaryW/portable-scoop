@@ -1,0 +1,15 @@
+﻿{
+    "schema_version":  1,
+    "upstream_revision":  "e6aa3b366bdee8ed138c1e0f7b85192ebdd35d0f",
+    "powershell_version":  "5.1.26100.6584",
+    "root_local_config":  true,
+    "plain_archive_installed":  true,
+    "persisted_data_created":  true,
+    "host_user_path_changed":  true,
+    "host_machine_path_changed":  false,
+    "host_manifest_environment_written":  true,
+    "host_module_path_changed":  true,
+    "host_shortcut_created":  true,
+    "package_removed":  true,
+    "persisted_data_survived_uninstall":  true
+}
