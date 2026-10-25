@@ -185,6 +185,17 @@ func TestZipContentWithGenericSevenzipHint(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestExistingFileAncestorRejectsBeforePublishing(t *testing.T) {
+	root, q := setup(t, zipFixture(t, fixtureMember{"a.txt", "new", 0600}, fixtureMember{"blocked/child.txt", "new", 0600}), "zip")
+	os.WriteFile(filepath.Join(q.Destination, "blocked"), []byte("sentinel"), 0600)
+	if err := Extract(context.Background(), root, q); err == nil {
+		t.Fatal("file ancestor accepted")
+	}
+	if _, err := os.Stat(filepath.Join(q.Destination, "a.txt")); !os.IsNotExist(err) {
+		t.Fatal("published before validating ancestors")
+	}
+}
 func TestLimitsCancellationAndExistingTargets(t *testing.T) {
 	data := zipFixture(t, fixtureMember{"a", "12345", 0600}, fixtureMember{"b", "12345", 0600})
 	for _, limit := range []Limits{{1, 100, 100}, {10, 9, 100}, {10, 100, 4}} {

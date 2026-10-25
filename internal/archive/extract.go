@@ -67,6 +67,9 @@ func Confined(root, target string) error {
 		if err == nil && info.Mode()&(os.ModeSymlink|os.ModeIrregular) != 0 {
 			return fmt.Errorf("archive path contains a reparse point")
 		}
+		if err == nil && cursor != target && !info.IsDir() {
+			return fmt.Errorf("archive path ancestor is not a directory")
+		}
 		if strings.EqualFold(cursor, root) {
 			break
 		}
