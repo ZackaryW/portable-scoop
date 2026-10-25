@@ -99,7 +99,8 @@ statuses, cancellation, and process-tree containment.
 
 ## Change tracking
 
-The active plan is `openspec/changes/add-portable-scoop-environments/`, containing
-the proposal, design, four capability specifications, and implementation tasks.
+Current behavior contracts live in [the main specifications](openspec/specs/).
+The completed proposal, design, delta specifications, and implementation tasks
+are preserved in [the archived change](openspec/changes/archive/2026-10-25-add-portable-scoop-environments/).
 Tests use temporary roots and explicit injected dependencies. They must never
 discover or modify a developer's real Scoop installation.
