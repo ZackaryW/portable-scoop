@@ -13,6 +13,7 @@ import (
 
 	"portscoop/internal/environment"
 	"portscoop/internal/runner"
+	"portscoop/internal/testutil"
 )
 
 func fixtureFile(t *testing.T, path string, data []byte) {
@@ -27,7 +28,7 @@ func fixtureFile(t *testing.T, path string, data []byte) {
 
 func managedFixture(t *testing.T) environment.Context {
 	t.Helper()
-	root := t.TempDir()
+	root := testutil.TempDir(t)
 	paths, _ := environment.PathsAt(root)
 	id, _ := environment.NewIdentity("fixture")
 	marker, _ := json.Marshal(id)

@@ -13,12 +13,13 @@ import (
 
 	"portscoop/internal/environment"
 	"portscoop/internal/runner"
+	"portscoop/internal/testutil"
 )
 
 func releaseFixture(t *testing.T) string {
 	t.Helper()
 	local := managedFixture(t)
-	release := t.TempDir()
+	release := testutil.TempDir(t)
 	if err := copyTree(filepath.Dir(filepath.Dir(local.Paths.Engine)), filepath.Join(release, "backend", "engine")); err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +67,7 @@ func TestInitializationPublishesUniqueReadyRootsAndPrivateLayout(t *testing.T) {
 	initializer := Initializer{ReleaseRoot: release}
 	var previous string
 	for _, name := range []string{"work", "personal"} {
-		root := filepath.Join(t.TempDir(), name+" (portable)")
+		root := filepath.Join(testutil.TempDir(t), name+" (portable)")
 		id, err := initializer.Init(context.Background(), root, name)
 		if err != nil {
 			t.Fatal(err)
@@ -100,7 +101,7 @@ func TestInitializationPublishesUniqueReadyRootsAndPrivateLayout(t *testing.T) {
 }
 
 func TestInitializationRejectsUnrelatedDirectoryWithoutChangingFiles(t *testing.T) {
-	root := t.TempDir()
+	root := testutil.TempDir(t)
 	sentinel := filepath.Join(root, "my-file.txt")
 	fixtureFile(t, sentinel, []byte("preserve"))
 	_, err := (Initializer{ReleaseRoot: releaseFixture(t)}).Init(context.Background(), root, "work")
@@ -118,7 +119,7 @@ func TestInitializationRejectsUnrelatedDirectoryWithoutChangingFiles(t *testing.
 
 func TestInitializationFailurePreservesVerifiedRelease(t *testing.T) {
 	release := releaseFixture(t)
-	target := filepath.Join(t.TempDir(), "portable")
+	target := filepath.Join(testutil.TempDir(t), "portable")
 	if err := copyTree(release, target); err != nil {
 		t.Fatal(err)
 	}
@@ -146,7 +147,7 @@ func (unsupportedRuntime) Run(_ context.Context, c runner.Command) (int, error) 
 }
 
 func TestInitializationRejectsUnsupportedRuntimeBeforeReadiness(t *testing.T) {
-	root := filepath.Join(t.TempDir(), "root")
+	root := filepath.Join(testutil.TempDir(t), "root")
 	_, err := (Initializer{ReleaseRoot: releaseFixture(t), Runner: unsupportedRuntime{}}).Init(context.Background(), root, "work")
 	if err == nil || !strings.Contains(err.Error(), "FullLanguage") {
 		t.Fatalf("error=%v", err)

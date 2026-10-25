@@ -28,7 +28,7 @@ $data = @{ arguments = @($request.arguments); cwd = (Get-Location).ProviderPath;
 
 func transportFixture(t *testing.T) environment.Context {
 	t.Helper()
-	root := filepath.Join(t.TempDir(), "portable (work)")
+	root := filepath.Join(testutil.TempDir(t), "portable (work)")
 	id, err := environment.NewIdentity("work")
 	if err != nil {
 		t.Fatal(err)
@@ -47,7 +47,7 @@ func transportFixture(t *testing.T) environment.Context {
 	if err := os.WriteFile(filepath.Join(filepath.Dir(paths.Adapter), "request-reader.ps1"), []byte(runner.RequestReader()), 0600); err != nil {
 		t.Fatal(err)
 	}
-	cwd := filepath.Join(t.TempDir(), "caller (directory)")
+	cwd := filepath.Join(testutil.TempDir(t), "caller (directory)")
 	if err := os.MkdirAll(cwd, 0700); err != nil {
 		t.Fatal(err)
 	}

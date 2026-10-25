@@ -25,7 +25,7 @@ func driveFixture(t *testing.T, volume, relative string, id environment.Identity
 }
 
 func TestRediscoveryRejectsWrongCachedIdentityAndFindsMovedRoot(t *testing.T) {
-	oldVolume, newVolume := t.TempDir(), t.TempDir()
+	oldVolume, newVolume := testutil.TempDir(t), testutil.TempDir(t)
 	id, _ := environment.NewIdentity("work")
 	other, _ := environment.NewIdentity("other")
 	relative := filepath.Join("tools", "work")
@@ -53,11 +53,11 @@ func (b blockedCandidate) Canonical(path string) (string, error) {
 }
 
 func TestUnavailableCandidateDoesNotPreventBoundedDiscovery(t *testing.T) {
-	volume := t.TempDir()
+	volume := testutil.TempDir(t)
 	id, _ := environment.NewIdentity("work")
 	relative := "work"
 	root := driveFixture(t, volume, relative, id)
-	blocked := filepath.Join(t.TempDir(), relative)
+	blocked := filepath.Join(testutil.TempDir(t), relative)
 	release := make(chan struct{})
 	defer close(release)
 	d := resolver.Discovery{Files: blockedCandidate{blocked: blocked, release: release}, Volumes: testutil.Volumes{{Root: volume, ID: "volume"}}, ProbeTimeout: 100 * time.Millisecond}
@@ -70,7 +70,7 @@ func TestUnavailableCandidateDoesNotPreventBoundedDiscovery(t *testing.T) {
 }
 
 func TestContainingDirectoryMoveNeedsRefreshedHint(t *testing.T) {
-	volume := t.TempDir()
+	volume := testutil.TempDir(t)
 	id, _ := environment.NewIdentity("work")
 	driveFixture(t, volume, "new-folder", id)
 	selection := resolver.Selection{ID: id.ID, Hints: []registry.Entry{{ID: id.ID, Path: filepath.Join(volume, "old-folder"), RelativePath: "old-folder"}}}
@@ -80,7 +80,7 @@ func TestContainingDirectoryMoveNeedsRefreshedHint(t *testing.T) {
 }
 
 func TestCachedMatchCannotHideDuplicateIdentity(t *testing.T) {
-	firstVolume, secondVolume := t.TempDir(), t.TempDir()
+	firstVolume, secondVolume := testutil.TempDir(t), testutil.TempDir(t)
 	id, _ := environment.NewIdentity("work")
 	first := driveFixture(t, firstVolume, "work", id)
 	second := driveFixture(t, secondVolume, "work", id)
@@ -104,10 +104,10 @@ func (f equivalentCandidate) Canonical(path string) (string, error) {
 }
 
 func TestEquivalentCanonicalPathsAreOneCandidate(t *testing.T) {
-	volume := t.TempDir()
+	volume := testutil.TempDir(t)
 	id, _ := environment.NewIdentity("work")
 	root := driveFixture(t, volume, "work", id)
-	alias := filepath.Join(t.TempDir(), "alias")
+	alias := filepath.Join(testutil.TempDir(t), "alias")
 	selection := resolver.Selection{ID: id.ID, Hints: []registry.Entry{{ID: id.ID, Path: root, RelativePath: "work"}, {ID: id.ID, Path: alias, RelativePath: "work"}}}
 	target, err := (resolver.Discovery{Files: equivalentCandidate{alias: alias, root: root}, Volumes: testutil.Volumes{}}).Resolve(context.Background(), selection)
 	if err != nil || target.Paths.Root != root {
@@ -116,11 +116,11 @@ func TestEquivalentCanonicalPathsAreOneCandidate(t *testing.T) {
 }
 
 func TestVerifiedRefreshPreservesDefaultAndOtherIdentities(t *testing.T) {
-	volume := t.TempDir()
+	volume := testutil.TempDir(t)
 	id, _ := environment.NewIdentity("work")
 	root := driveFixture(t, volume, "work", id)
 	other := testutil.NewRoot(t, "personal")
-	store := registry.Store{Path: filepath.Join(t.TempDir(), "registry.json")}
+	store := registry.Store{Path: filepath.Join(testutil.TempDir(t), "registry.json")}
 	if err := store.Update(context.Background(), func(d *registry.Document) error {
 		d.Entries["work"] = registry.Entry{ID: id.ID, Path: filepath.Join(volume, "old"), RelativePath: "old"}
 		d.Entries["personal"] = registry.Entry{ID: other.Identity.ID, Path: other.Path, RelativePath: "personal"}

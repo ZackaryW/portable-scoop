@@ -27,6 +27,10 @@ type Release struct {
 
 func VerifyRelease(root string) (Release, error) {
 	var release Release
+	root, err := (environment.OSFilesystem{}).Canonical(root)
+	if err != nil {
+		return release, fmt.Errorf("resolve release root: %w", err)
+	}
 	data, err := containedFile(root, filepath.Join(root, "release.json"))
 	if err == nil {
 		err = metadata.Decode(data, &release)

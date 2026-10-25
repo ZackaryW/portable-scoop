@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"portscoop/internal/environment"
+	"portscoop/internal/testutil"
 )
 
 func writeFixture(t *testing.T, path string, data []byte) {
@@ -24,7 +25,7 @@ func writeFixture(t *testing.T, path string, data []byte) {
 
 func relocationFixture(t *testing.T) environment.Paths {
 	t.Helper()
-	root := filepath.Join(t.TempDir(), "old (portable)")
+	root := filepath.Join(testutil.TempDir(t), "old (portable)")
 	paths, _ := environment.PathsAt(root)
 	for _, path := range []string{paths.State, paths.Shims, filepath.Join(paths.Apps, "tool", "1.0", "tools"), filepath.Join(paths.Persist, "tool", "data")} {
 		if err := os.MkdirAll(path, 0700); err != nil {
@@ -156,7 +157,7 @@ func TestExternalLinksAndUnknownFormatsAreRejected(t *testing.T) {
 	for _, variant := range []string{"external-link", "changed-shim", "traversal-catalog", "reparse-parent"} {
 		t.Run(variant, func(t *testing.T) {
 			old := relocationFixture(t)
-			outside := t.TempDir()
+			outside := testutil.TempDir(t)
 			sentinel := filepath.Join(outside, "sentinel.txt")
 			writeFixture(t, sentinel, []byte("preserve"))
 			moved := moveFixture(t, old)
@@ -212,7 +213,7 @@ func TestExactRootReplacementPreservesSiblingAndSameDrivePaths(t *testing.T) {
 func TestRecordedDriveLetterMoveRepairsOwnedPathState(t *testing.T) {
 	// Model a disconnected previous drive without mounting or changing any
 	// host drive letters. Real guest drive reassignment is release qualification.
-	root := filepath.Join(t.TempDir(), "portable")
+	root := filepath.Join(testutil.TempDir(t), "portable")
 	paths, _ := environment.PathsAt(root)
 	old := `Z:\portscoop-fixture\work`
 	for _, directory := range []string{paths.Shims, paths.State, paths.Apps} {
@@ -239,7 +240,7 @@ func TestRedirectedManagedDirectoriesBlockBackendBeforeWrites(t *testing.T) {
 	for _, directory := range []string{"cache", "tmp", "global", "buckets"} {
 		t.Run(directory, func(t *testing.T) {
 			paths := relocationFixture(t)
-			outside := t.TempDir()
+			outside := testutil.TempDir(t)
 			path := filepath.Join(paths.Scoop, directory)
 			if err := createJunction(path, outside); err != nil {
 				t.Fatal(err)

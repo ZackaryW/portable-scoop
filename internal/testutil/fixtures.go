@@ -20,9 +20,20 @@ type Root struct {
 	Identity environment.Identity
 }
 
+// TempDir returns the canonical spelling used by environment.Load. Windows
+// runners can expose the same temporary directory through an 8.3 profile alias.
+func TempDir(t testing.TB) string {
+	t.Helper()
+	root, err := (environment.OSFilesystem{}).Canonical(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
 func NewRoot(t testing.TB, name string) Root {
 	t.Helper()
-	root := t.TempDir()
+	root := TempDir(t)
 	id, err := environment.NewIdentity(name)
 	if err != nil {
 		t.Fatal(err)

@@ -15,7 +15,7 @@ func TestRegistrationLifecyclePreservesPortableFiles(t *testing.T) {
 	work, personal := testutil.NewRoot(t, "work"), testutil.NewRoot(t, "personal")
 	marker := filepath.Join(work.Path, filepath.FromSlash(environment.MarkerRelative))
 	before, _ := os.ReadFile(marker)
-	m := registry.Manager{Store: registry.Store{Path: filepath.Join(t.TempDir(), "registry.json")}}
+	m := registry.Manager{Store: registry.Store{Path: filepath.Join(testutil.TempDir(t), "registry.json")}}
 	ctx := context.Background()
 	for alias, root := range map[string]string{"WORK": work.Path, "personal": personal.Path, "second-work": work.Path} {
 		if err := m.Register(ctx, root, alias); err != nil {
@@ -50,11 +50,11 @@ func TestRegistrationLifecyclePreservesPortableFiles(t *testing.T) {
 
 func TestSameIdentityRegistrationRefreshesLocation(t *testing.T) {
 	root := testutil.NewRoot(t, "work")
-	m := registry.Manager{Store: registry.Store{Path: filepath.Join(t.TempDir(), "registry.json")}}
+	m := registry.Manager{Store: registry.Store{Path: filepath.Join(testutil.TempDir(t), "registry.json")}}
 	if err := m.Register(context.Background(), root.Path, "work"); err != nil {
 		t.Fatal(err)
 	}
-	moved := filepath.Join(t.TempDir(), "moved (work)")
+	moved := filepath.Join(testutil.TempDir(t), "moved (work)")
 	if err := os.Rename(root.Path, moved); err != nil {
 		t.Fatal(err)
 	}
