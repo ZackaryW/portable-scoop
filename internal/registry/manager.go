@@ -30,16 +30,10 @@ func (m Manager) Register(ctx context.Context, path, name string) error {
 	if err != nil {
 		return err
 	}
-	volume := filepath.VolumeName(paths.Root)
-	if volume == "" || len(volume) != 2 {
-		return fmt.Errorf("registration requires a local drive root")
-	}
-	relative, err := filepath.Rel(volume+string(filepath.Separator), paths.Root)
+	entry, err := registrationEntry(id, paths)
 	if err != nil {
 		return err
 	}
-	entry := Entry{ID: id.ID, Path: paths.Root, RelativePath: relative}
-	entry.VolumeID, _ = localvol.Identity(paths.Root)
 	return m.Store.Update(ctx, func(d *Document) error {
 		if previous, exists := d.Entries[alias]; exists && previous.ID != id.ID {
 			return fmt.Errorf("alias %q already belongs to another identity; unregister it first", alias)
@@ -47,6 +41,20 @@ func (m Manager) Register(ctx context.Context, path, name string) error {
 		d.Entries[alias] = entry
 		return nil
 	})
+}
+
+func registrationEntry(id environment.Identity, paths environment.Paths) (Entry, error) {
+	volume := filepath.VolumeName(paths.Root)
+	if volume == "" || len(volume) != 2 {
+		return Entry{}, fmt.Errorf("registration requires a local drive root")
+	}
+	relative, err := filepath.Rel(volume+string(filepath.Separator), paths.Root)
+	if err != nil {
+		return Entry{}, err
+	}
+	entry := Entry{ID: id.ID, Path: paths.Root, RelativePath: relative}
+	entry.VolumeID, _ = localvol.Identity(paths.Root)
+	return entry, nil
 }
 
 func (m Manager) SetDefault(ctx context.Context, name string) error {

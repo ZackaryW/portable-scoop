@@ -26,6 +26,12 @@ type Release struct {
 }
 
 func VerifyRelease(root string) (Release, error) {
+	return verifyRelease(root, false)
+}
+
+// An installed Host may own one ready default Store outside its release
+// inventory. Downloaded payload verification remains strict.
+func verifyRelease(root string, allowDefaultStore bool) (Release, error) {
 	var release Release
 	root, err := (environment.OSFilesystem{}).Canonical(root)
 	if err != nil {
@@ -69,14 +75,23 @@ func VerifyRelease(root string) (Release, error) {
 		if err != nil {
 			return err
 		}
-		if entry.IsDir() {
-			return nil
-		}
 		relative, err := filepath.Rel(root, path)
 		if err != nil {
 			return err
 		}
 		key := strings.ToLower(filepath.ToSlash(relative))
+		if allowDefaultStore && key == environment.DefaultStoreDirectory {
+			if !entry.IsDir() || entry.Type()&(os.ModeSymlink|os.ModeIrregular) != 0 {
+				return fmt.Errorf("Host default Store must be a real directory")
+			}
+			if _, _, err := environment.Load(environment.OSFilesystem{}, path); err != nil {
+				return fmt.Errorf("Host default Store is not ready: %w", err)
+			}
+			return filepath.SkipDir
+		}
+		if entry.IsDir() {
+			return nil
+		}
 		if key != "release.json" && key != ".portscoop-init.lock" && !seen[key] {
 			return fmt.Errorf("unrelated file in release directory: %s", relative)
 		}
@@ -135,7 +150,7 @@ func (i Initializer) Init(ctx context.Context, root, name string) (environment.I
 	if err != nil {
 		return id, err
 	}
-	release, err := VerifyRelease(releaseRoot)
+	release, err := verifyRelease(releaseRoot, true)
 	if err != nil {
 		return id, err
 	}

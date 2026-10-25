@@ -156,3 +156,55 @@ func TestInitializationRejectsUnsupportedRuntimeBeforeReadiness(t *testing.T) {
 		t.Fatal("unsupported runtime published readiness")
 	}
 }
+
+func TestHostWithDefaultStoreCanInitializeMoreStores(t *testing.T) {
+	release := releaseFixture(t)
+	initializer := Initializer{ReleaseRoot: release}
+	store := filepath.Join(release, environment.DefaultStoreDirectory)
+	id, err := initializer.Init(context.Background(), store, "Default")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixtureFile(t, filepath.Join(store, "user-data.txt"), []byte("preserve"))
+	if _, err := VerifyRelease(release); err == nil {
+		t.Fatal("download verification accepted runtime Store data")
+	}
+	other := filepath.Join(testutil.TempDir(t), "other")
+	if _, err := initializer.Init(context.Background(), other, "Other"); err != nil {
+		t.Fatal("default Store blocked subsequent initialization:", err)
+	}
+	loaded, _, err := environment.Load(environment.OSFilesystem{}, store)
+	if err != nil || loaded != id {
+		t.Fatalf("default Store changed: %+v %v", loaded, err)
+	}
+	if _, err := os.Stat(filepath.Join(other, environment.DefaultStoreDirectory)); !os.IsNotExist(err) {
+		t.Fatal("runtime Store was copied into another Store")
+	}
+	fixtureFile(t, filepath.Join(release, "backend", "engine", "bin", "scoop.ps1"), []byte("tampered"))
+	if _, err := initializer.Init(context.Background(), filepath.Join(testutil.TempDir(t), "blocked"), "Blocked"); err == nil || !strings.Contains(err.Error(), "artifact changed") {
+		t.Fatalf("runtime Store hid Host payload tampering: %v", err)
+	}
+}
+
+func TestHostSourceRejectsUnreadyOrRedirectedDefaultStore(t *testing.T) {
+	for _, kind := range []string{"unready", "file", "link"} {
+		t.Run(kind, func(t *testing.T) {
+			release := releaseFixture(t)
+			store := filepath.Join(release, environment.DefaultStoreDirectory)
+			switch kind {
+			case "unready":
+				fixtureFile(t, filepath.Join(store, "unrelated.txt"), []byte("preserve"))
+			case "file":
+				fixtureFile(t, store, []byte("preserve"))
+			case "link":
+				outside := testutil.NewRoot(t, "outside")
+				if err := os.Symlink(outside.Path, store); err != nil {
+					t.Skip("directory symlinks unavailable:", err)
+				}
+			}
+			if _, err := verifyRelease(release, true); err == nil {
+				t.Fatal("invalid default Store accepted as a runtime directory")
+			}
+		})
+	}
+}

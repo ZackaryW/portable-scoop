@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"portscoop/internal/backend/scoop"
 	"portscoop/internal/delegation"
 	"portscoop/internal/registry"
 	"portscoop/internal/runner"
@@ -94,7 +96,7 @@ func TestInternalEndpointExecutesLocallyAndCannotRediscover(t *testing.T) {
 }
 
 func TestDocumentedManagementHelp(t *testing.T) {
-	for _, name := range []string{"register", "default", "unregister", "list"} {
+	for _, name := range []string{"register", "default", "unregister", "list", "bootstrap"} {
 		cmd := NewWithOptions("test", Options{RegistryPath: filepath.Join(t.TempDir(), "registry.json")})
 		var output bytes.Buffer
 		cmd.SetOut(&output)
@@ -103,5 +105,18 @@ func TestDocumentedManagementHelp(t *testing.T) {
 		if err := cmd.Execute(); err != nil || output.Len() == 0 {
 			t.Fatalf("missing documented help for %s: %v", name, err)
 		}
+	}
+}
+
+func TestBootstrapRejectsPortableLauncherBeforeRegistryWrites(t *testing.T) {
+	root := testutil.NewRoot(t, "portable")
+	registryPath := filepath.Join(testutil.TempDir(t), "registry.json")
+	cmd := NewWithOptions("test", Options{RegistryPath: registryPath, ExecutablePath: filepath.Join(root.Path, "psp.exe"), Initializer: &scoop.Initializer{ReleaseRoot: root.Path}})
+	cmd.SetArgs([]string{"env", "bootstrap"})
+	if err := cmd.Execute(); err == nil || !strings.Contains(err.Error(), "Host launcher") {
+		t.Fatalf("portable launcher accepted Host bootstrap: %v", err)
+	}
+	if _, err := os.Stat(registryPath); !os.IsNotExist(err) {
+		t.Fatal("rejected bootstrap wrote host registration")
 	}
 }

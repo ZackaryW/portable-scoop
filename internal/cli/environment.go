@@ -3,12 +3,14 @@ package cli
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"text/tabwriter"
 	"time"
 
 	"github.com/spf13/cobra"
 	"portscoop/internal/backend/scoop"
+	"portscoop/internal/environment"
 	"portscoop/internal/registry"
 )
 
@@ -29,6 +31,26 @@ func newEnvironmentCommand(options Options) *cobra.Command {
 	}}
 	initialize.Flags().StringVar(&displayName, "name", "", "Portable environment display name")
 	initialize.MarkFlagRequired("name")
+	bootstrap := &cobra.Command{Use: "bootstrap", Short: "Create and select a first default Store in this Host's store subfolder", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, args []string) error {
+		if options.Initializer == nil {
+			return fmt.Errorf("default Store initialization requires a verified Host release")
+		}
+		host := filepath.Dir(options.ExecutablePath)
+		if _, err := os.Stat(filepath.Join(host, filepath.FromSlash(environment.MarkerRelative))); !os.IsNotExist(err) {
+			return fmt.Errorf("env bootstrap must be run from a Host launcher")
+		}
+		store := filepath.Join(host, environment.DefaultStoreDirectory)
+		created, err := manager.Bootstrap(cmd.Context(), store, options.Initializer.Init)
+		if err != nil {
+			return err
+		}
+		if created {
+			fmt.Fprintln(cmd.OutOrStdout(), "Default Store ready at", store)
+		} else {
+			fmt.Fprintln(cmd.OutOrStdout(), "Existing default Store kept; no additional Store was created")
+		}
+		return nil
+	}}
 	var name string
 	register := &cobra.Command{Use: "register <path> --name <alias>", Short: "Register a ready portable environment without modifying its package data", Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
 		ctx, cancel := context.WithTimeout(cmd.Context(), 5*time.Second)
@@ -77,7 +99,7 @@ func newEnvironmentCommand(options Options) *cobra.Command {
 		}
 		return out.Flush()
 	}}
-	command.AddCommand(initialize, register, defaultCommand, unregister, list)
+	command.AddCommand(initialize, bootstrap, register, defaultCommand, unregister, list)
 	return command
 }
 

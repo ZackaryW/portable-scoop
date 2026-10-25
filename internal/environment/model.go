@@ -15,6 +15,7 @@ const ProtocolMajor = 1
 const MarkerRelative = ".portscoop/environment.json"
 const EngineEntryRelative = "scoop/apps/scoop/current/bin/scoop.ps1"
 const AdapterRelative = ".portscoop/backend/entry.ps1"
+const DefaultStoreDirectory = "store"
 
 var identityPattern = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
 var revisionPattern = regexp.MustCompile(`^[0-9a-f]{40}$`)
