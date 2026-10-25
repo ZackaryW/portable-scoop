@@ -3,6 +3,7 @@ package selfupdate
 import (
 	"fmt"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -17,7 +18,7 @@ func backendSource(p string) (string, bool) {
 	if p == backendMetadata {
 		return "backend/backend.json", true
 	}
-	for _, pair := range [][2]string{{".portscoop/backend/", "backend/adapter/"}, {"scoop/apps/scoop/current/", "backend/engine/"}} {
+	for _, pair := range [][2]string{{".portscoop/backend/", "backend/adapter/"}, {"scoop/apps/scoop/current/", "backend/engine/"}, {".portscoop/tools/", "backend/tools/"}} {
 		if strings.HasPrefix(p, pair[0]) && len(p) > len(pair[0]) {
 			return pair[1] + strings.TrimPrefix(p, pair[0]), true
 		}
@@ -62,7 +63,7 @@ func backendInventory(root, metadata string, candidate bool, release runtimeinst
 	result[backendMetadata] = h
 	// Every executable backend file must be owned. Preserving an unlisted
 	// library would produce a Store that its runtime correctly refuses to use.
-	for _, namespace := range []string{".portscoop/backend/", "scoop/apps/scoop/current/"} {
+	for _, namespace := range []string{".portscoop/backend/", "scoop/apps/scoop/current/", ".portscoop/tools/"} {
 		directory := strings.TrimSuffix(namespace, "/")
 		if candidate {
 			source, _ := backendSource(namespace + "placeholder")
@@ -71,6 +72,22 @@ func backendInventory(root, metadata string, candidate bool, release runtimeinst
 		path, err := runtimeinstall.CheckPath(root, directory)
 		if err != nil {
 			return nil, err
+		}
+		// An older installed backend can legitimately predate managed tools.
+		// A new inventory must never adopt an existing unowned tools tree.
+		if namespace == ".portscoop/tools/" {
+			if _, e := os.Lstat(path); os.IsNotExist(e) {
+				owned := false
+				for p := range result {
+					if strings.HasPrefix(p, namespace) {
+						owned = true
+						break
+					}
+				}
+				if !owned {
+					continue
+				}
+			}
 		}
 		err = filepath.WalkDir(path, func(path string, e fs.DirEntry, err error) error {
 			if err != nil {

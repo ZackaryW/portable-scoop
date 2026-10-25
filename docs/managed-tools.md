@@ -21,5 +21,15 @@ Redistribution must preserve those notices and provide corresponding sources
 for the distributed components; source links are provenance, not a substitute
 for satisfying the applicable source-distribution requirements.
 
-These preparation tools do not yet enable runtime bootstrap or NSIS package
-installation. Those behaviors require the matching backend integration.
+Release packaging includes the complete bundle under `backend/tools`. Store
+initialization copies it into `.portscoop/tools`; backend revision
+`portable-operations-v1.1` verifies every file against both inventories before
+use. Missing, changed, or unlisted helper files require runtime repair.
+
+A Host-coordinated self-update replaces helpers with the backend and restores
+the previous files if replacement fails. A direct Store self-update updates
+compatible launchers only, retaining its existing backend and helpers. Helpers
+are private runtime components, separate from apps installed with `psp install`.
+
+Automatic Main bootstrap and NSIS package extraction require the remaining
+backend integration; shipping the helper files alone does not enable them.

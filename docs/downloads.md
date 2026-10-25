@@ -18,5 +18,5 @@ remain unsupported. Filename acceptance does not prove a payload is portable.
 Managed extraction supports ZIP/nupkg, 7z, tar, tar.gz/tgz and single-file gzip.
 See [archive extraction](archive-extraction.md) for content validation and limits.
 
-The matching runtime/backend contract is `portable-operations-v1.0`. This requires
+The matching runtime/backend contract is `portable-operations-v1.1`. This requires
 a matching distribution; replacing individual files in an older Store is unsupported.

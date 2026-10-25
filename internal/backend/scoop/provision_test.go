@@ -23,6 +23,9 @@ func releaseFixture(t *testing.T) string {
 	if err := copyTree(filepath.Dir(filepath.Dir(local.Paths.Engine)), filepath.Join(release, "backend", "engine")); err != nil {
 		t.Fatal(err)
 	}
+	if err := copyTree(filepath.Join(local.Paths.Root, ToolsRelative), filepath.Join(release, "backend", "tools")); err != nil {
+		t.Fatal(err)
+	}
 	for _, name := range []string{"entry.ps1", "request-reader.ps1"} {
 		data, err := os.ReadFile(filepath.Join(filepath.Dir(local.Paths.Adapter), name))
 		if err != nil {

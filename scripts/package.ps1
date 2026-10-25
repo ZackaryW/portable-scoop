@@ -21,7 +21,7 @@ Copy-Item -LiteralPath (Join-Path $projectRoot 'docs') -Destination $stage -Recu
 $updateDescriptor=@{
     schema_version=1;update_protocol=1;version=$Version;platform='windows-amd64'
     target_kinds=@('host','store');launchers=@('portscoop.exe','psp.exe','pspe.exe')
-    backends=@(@{schema_version=1;protocol_major=1;upstream_revision='e6aa3b366bdee8ed138c1e0f7b85192ebdd35d0f';patch_revision='portable-operations-v1.0'})
+    backends=@(@{schema_version=1;protocol_major=1;upstream_revision='e6aa3b366bdee8ed138c1e0f7b85192ebdd35d0f';patch_revision='portable-operations-v1.1'})
 } | ConvertTo-Json -Depth 6
 [IO.File]::WriteAllText((Join-Path $stage 'runtime-update.json'),$updateDescriptor,(New-Object Text.UTF8Encoding($false)))
 $artifacts=[ordered]@{}
@@ -29,7 +29,7 @@ Get-ChildItem -LiteralPath $stage -File -Recurse -Force | Sort-Object FullName |
     $relative=$_.FullName.Substring($stage.Length+1).Replace('\','/')
     $artifacts[$relative]=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
 }
-$metadata=@{schema_version=1;patch_revision='portable-operations-v1.0';artifacts=$artifacts} | ConvertTo-Json -Depth 5
+$metadata=@{schema_version=1;patch_revision='portable-operations-v1.1';artifacts=$artifacts} | ConvertTo-Json -Depth 5
 [IO.File]::WriteAllText((Join-Path $stage 'release.json'),$metadata,(New-Object Text.UTF8Encoding($false)))
 & (Join-Path $stage 'portscoop.exe') __portscoop_verify_release
 if ($LASTEXITCODE -ne 0) { throw 'Release payload verification failed' }

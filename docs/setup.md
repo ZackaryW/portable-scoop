@@ -85,7 +85,7 @@ Portscoop does not guarantee backward compatibility with older releases or Store
 formats. A breaking release may require a fresh Store initialized from its complete
 verified distribution. Schema-1 managed backends can be upgraded through a current Host; arbitrary
 Store format migrations and in-place downgrades are unsupported. The current
-backend patch is `portable-operations-v1.0`; mismatched launchers and backends
+backend patch is `portable-operations-v1.1`; mismatched launchers and backends
 fail verification.
 
 Retain the old Store separately if its packages or persisted data are still needed.

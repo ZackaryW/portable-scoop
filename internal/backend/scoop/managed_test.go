@@ -16,6 +16,7 @@ import (
 	"portscoop/internal/environment"
 	"portscoop/internal/runner"
 	"portscoop/internal/testutil"
+	"portscoop/internal/toolbundle"
 )
 
 func TestManagedFreezesPortableActionsAndReportsDecisions(t *testing.T) {
@@ -71,6 +72,24 @@ func managedFixture(t *testing.T) environment.Context {
 		hash := sha256.Sum256(data)
 		metadata.Artifacts[path] = hex.EncodeToString(hash[:])
 	}
+	toolPins := toolbundle.Pins{SchemaVersion: 1}
+	toolInventory := toolbundle.Inventory{Artifacts: map[string]string{}}
+	for name, required := range map[string][]string{"git": {"cmd/git.exe", "LICENSE.txt"}, "7zip": {"7z.exe", "7z.dll", "License.txt"}} {
+		toolPins.Tools = append(toolPins.Tools, toolbundle.Tool{Name: name, Version: "fixture", URL: "https://example.invalid/fixture.zip", SHA256: strings.Repeat("a", 64), Format: "zip", Required: required, Source: "https://example.invalid/source", SourcePackages: "https://example.invalid/sources"})
+		for _, p := range required {
+			rel := name + "/" + p
+			data := []byte("fixture " + rel)
+			fixtureFile(t, filepath.Join(root, ToolsRelative, rel), data)
+			hash := sha256.Sum256(data)
+			toolInventory.Artifacts[rel] = hex.EncodeToString(hash[:])
+			metadata.Artifacts[ToolsRelative+"/"+rel] = toolInventory.Artifacts[rel]
+		}
+	}
+	toolInventory.Pins = toolPins
+	toolData, _ := json.Marshal(toolInventory)
+	fixtureFile(t, filepath.Join(root, ToolsRelative, "tools.json"), toolData)
+	toolHash := sha256.Sum256(toolData)
+	metadata.Artifacts[ToolsRelative+"/tools.json"] = hex.EncodeToString(toolHash[:])
 	encoded, _ := json.Marshal(metadata)
 	fixtureFile(t, filepath.Join(root, MetadataRelative), encoded)
 	fixtureFile(t, paths.Config, []byte("{}"))

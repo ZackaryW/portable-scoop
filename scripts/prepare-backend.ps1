@@ -52,6 +52,12 @@ $bucketText=$bucketText.Replace($oldDiagnostic,'Standalone Git is required at %P
 [IO.File]::WriteAllText($bucketFile,$bucketText,(New-Object Text.UTF8Encoding($false)))
 Copy-Item -LiteralPath (Join-Path $projectRoot 'backend\scoop\adapter\entry.ps1') -Destination $adapter
 Copy-Item -LiteralPath (Join-Path $projectRoot 'internal\runner\request-reader.ps1') -Destination $adapter
+$previousLocation=Get-Location
+try {
+    Set-Location -LiteralPath $projectRoot
+    $null = & go run ./scripts/prepare-tools -destination (Join-Path $Destination 'tools')
+    if($LASTEXITCODE -ne 0){throw 'Managed tool preparation failed'}
+} finally {Set-Location -LiteralPath $previousLocation.Path}
 $artifacts = [ordered]@{}
 Get-ChildItem -LiteralPath $engine -File -Recurse | Sort-Object FullName | ForEach-Object {
     $relative = $_.FullName.Substring($engine.Length+1).Replace('\','/')
@@ -60,6 +66,10 @@ Get-ChildItem -LiteralPath $engine -File -Recurse | Sort-Object FullName | ForEa
 Get-ChildItem -LiteralPath $adapter -File | Sort-Object FullName | ForEach-Object {
     $artifacts[".portscoop/backend/$($_.Name)"] = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
 }
-$metadata = @{ schema_version=1; protocol_major=1; upstream_revision=$pin.upstream_revision; patch_revision='portable-operations-v1.0'; artifacts=$artifacts } | ConvertTo-Json -Depth 5
+Get-ChildItem -LiteralPath (Join-Path $Destination 'tools') -File -Recurse | Sort-Object FullName | ForEach-Object {
+    $relative=$_.FullName.Substring((Join-Path $Destination 'tools').Length+1).Replace('\','/')
+    $artifacts[".portscoop/tools/$relative"]=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+}
+$metadata = @{ schema_version=1; protocol_major=1; upstream_revision=$pin.upstream_revision; patch_revision='portable-operations-v1.1'; artifacts=$artifacts } | ConvertTo-Json -Depth 5
 [IO.File]::WriteAllText((Join-Path $Destination 'backend.json'),$metadata,(New-Object Text.UTF8Encoding($false)))
 Write-Output $Destination

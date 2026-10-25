@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"portscoop/internal/environment"
+	"portscoop/internal/toolbundle"
 )
 
 // DistributionPath is the fixed namespace that Host updates may own.
@@ -67,6 +68,38 @@ func VerifyDistribution(root string, installed bool) (Release, Descriptor, error
 	}
 	if backend.PatchRevision != r.PatchRevision {
 		return r, d, fmt.Errorf("backend and release revisions differ")
+	}
+	if backend.PatchRevision == "portable-operations-v1.1" || backend.Artifacts[".portscoop/tools/tools.json"] != "" {
+		var inventory toolbundle.Inventory
+		if err := Read(root, "backend/tools/tools.json", &inventory); err != nil {
+			return r, d, err
+		}
+		if err := inventory.Validate(); err != nil {
+			return r, d, err
+		}
+		for _, required := range []string{"git/cmd/git.exe", "7zip/7z.exe", "7zip/7z.dll"} {
+			if inventory.Artifacts[required] == "" {
+				return r, d, fmt.Errorf("release missing managed helper %s", required)
+			}
+		}
+		for p, digest := range inventory.Artifacts {
+			if backend.Artifacts[".portscoop/tools/"+p] != digest || r.Artifacts["backend/tools/"+p] != digest {
+				return r, d, fmt.Errorf("inconsistent release tool artifact %s", p)
+			}
+		}
+		if r.Artifacts["backend/tools/tools.json"] == "" || backend.Artifacts[".portscoop/tools/tools.json"] != r.Artifacts["backend/tools/tools.json"] {
+			return r, d, fmt.Errorf("inconsistent tool inventory ownership")
+		}
+		for path := range r.Artifacts {
+			if strings.HasPrefix(path, "backend/tools/") && path != "backend/tools/tools.json" && inventory.Artifacts[strings.TrimPrefix(path, "backend/tools/")] == "" {
+				return r, d, fmt.Errorf("unowned release helper %s", path)
+			}
+		}
+		for path := range backend.Artifacts {
+			if strings.HasPrefix(path, ".portscoop/tools/") && path != ".portscoop/tools/tools.json" && inventory.Artifacts[strings.TrimPrefix(path, ".portscoop/tools/")] == "" {
+				return r, d, fmt.Errorf("unowned backend helper %s", path)
+			}
+		}
 	}
 	matched := false
 	for _, c := range d.Backends {

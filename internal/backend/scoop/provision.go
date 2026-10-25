@@ -210,6 +210,9 @@ func (i Initializer) Init(ctx context.Context, root, name string) (environment.I
 	if err = copyTree(filepath.Join(releaseRoot, "backend", "adapter"), filepath.Dir(paths.Adapter)); err != nil {
 		return id, err
 	}
+	if err = copyTree(filepath.Join(releaseRoot, "backend", "tools"), filepath.Join(stage, ToolsRelative)); err != nil {
+		return id, err
+	}
 	for _, pair := range [][2]string{{filepath.Join(releaseRoot, "backend", "backend.json"), filepath.Join(stage, MetadataRelative)}, {filepath.Join(releaseRoot, "portscoop.exe"), filepath.Join(stage, "portscoop.exe")}, {filepath.Join(releaseRoot, "psp.exe"), filepath.Join(stage, "psp.exe")}, {filepath.Join(releaseRoot, "pspe.exe"), filepath.Join(stage, "pspe.exe")}} {
 		data, err := os.ReadFile(pair[0])
 		if err != nil {
