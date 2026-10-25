@@ -43,7 +43,7 @@ Supported portable package operations SHALL NOT modify persistent user/machine e
 - **THEN** portable execution does not create host Start Menu entries or register modules outside the root
 
 ### Requirement: Reject unsupported package effects before execution
-The system SHALL preflight manifests and their dependency closure for install, update, and uninstall against its documented portable compatibility policy. Packages requiring unsupported script hooks, external installers, or host integration SHALL fail before those effects execute. It SHALL NOT claim arbitrary-script or application-runtime sandboxing.
+The system SHALL preflight manifests and their dependency closure for install, update, and uninstall against its documented portable compatibility policy. It SHALL execute approved portable replacements for supported fields, visibly omit optional nonportable integration, and reject required unsupported effects before mutation. It SHALL NOT claim arbitrary-script or application-runtime sandboxing.
 
 #### Scenario: Dependency has an unsupported hook
 - **WHEN** an otherwise supported installation depends on a manifest with an unsupported install script
@@ -52,6 +52,15 @@ The system SHALL preflight manifests and their dependency closure for install, u
 #### Scenario: Installed manifest has an unsupported uninstall action
 - **WHEN** uninstall would execute a hook not supported by the portable policy
 - **THEN** the hook is not run and the command reports the compatibility failure
+
+#### Scenario: Supported hook has a portable replacement
+- **WHEN** a hook fully matches a supported portable operation
+- **THEN** the approved replacement runs at its lifecycle phase without evaluating the hook's script text
+
+#### Scenario: Old backend cannot execute the plan
+- **WHEN** the selected Store has an incompatible backend revision
+- **THEN** the launcher reports the need for a matching complete backend before package mutation
+- **AND** execution is blocked without automatic migration or a legacy backend fallback; support for older Portscoop releases and Store formats is not required
 
 ### Requirement: Expose a controlled package command surface
 The system SHALL support install, uninstall, app update, list, search, status, bucket listing/addition/removal, reset, cleanup, and configuration inspection for compatible packages. It SHALL reject unsupported commands, global operations, root-changing configuration writes, and unrestricted engine self-update before backend execution.

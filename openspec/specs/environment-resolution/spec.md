@@ -7,7 +7,7 @@ Resolve the intended portable environment deterministically and delegate central
 ## Requirements
 
 ### Requirement: Select exactly one intended environment
-The system SHALL select an explicit registered alias, otherwise its adjacent portable environment, otherwise an explicitly configured central default. A central invocation without a selector or default SHALL fail. A portable invocation SHALL reject an explicit selector for another identity. The working directory SHALL NOT implicitly select a target.
+For Store-targeted package and application operations, the system SHALL select an explicit registered alias, otherwise its adjacent portable environment, otherwise an explicitly configured central default. A central Store operation without a selector or default SHALL fail. A portable invocation SHALL reject an explicit selector for another identity. The working directory SHALL NOT implicitly select a target. Self-update SHALL select only the invoked managed installation and SHALL NOT use the Host default or accept Store-selection retargeting.
 
 #### Scenario: Explicit central selection
 - **WHEN** the central launcher runs `psp --env work list` while another identity is the default
@@ -24,6 +24,20 @@ The system SHALL select an explicit registered alias, otherwise its adjacent por
 #### Scenario: Portable launcher rejects cross-environment selection
 - **WHEN** a portable launcher is given a selector resolving to another installation identity
 - **THEN** it reports the conflict and launches neither environment's backend
+
+#### Scenario: Self-update a Host without selecting a Store
+- **WHEN** a supported Host runs `psp self-update` without a registered default
+- **THEN** self-update selects that Host installation
+- **AND** it does not require, initialize, or select a Store
+
+#### Scenario: Self-update ignores a different default and caller directory
+- **WHEN** a Host has a default Store and its management launcher runs self-update from another Store's directory
+- **THEN** only the Host containing that invoked launcher is selected for update
+
+#### Scenario: Reject retargeting self-update
+- **WHEN** self-update receives `--env work`
+- **THEN** it reports that self-update targets the invoked installation
+- **AND** it does not update the Host or any Store
 
 ### Requirement: Verify identity at every candidate location
 The system SHALL verify the requested installation identity and supported ready metadata before accepting a location. A saved path or drive letter SHALL NOT be sufficient. Invalid adjacent portable metadata SHALL cause an error rather than central fallback.
