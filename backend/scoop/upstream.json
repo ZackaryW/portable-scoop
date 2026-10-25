@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "upstream_revision": "e6aa3b366bdee8ed138c1e0f7b85192ebdd35d0f",
+  "archive_url": "https://codeload.github.com/ScoopInstaller/Scoop/zip/e6aa3b366bdee8ed138c1e0f7b85192ebdd35d0f",
+  "archive_sha256": "fa96b15950f3726d2c9a35493e192eefe56d2eddba718e8121c32f7a19257a0a",
+  "source_files": {
+    "bin/scoop.ps1": "f0419a23bfca896f33e089916aa70e40ce9d884ec60bc5cab5f3da79164dd6ef",
+    "lib/core.ps1": "ba68cfcd178311598fbcfe07047ede56b7b2fa99cb9ee540b536ad9a059a0ff3",
+    "lib/system.ps1": "3158a2bfd1d3f37ad49c9c0acca6b250f048e0274002f61f473f5bcae0eb963e",
+    "lib/install.ps1": "18e92081c316e0e4f114032b43dccae0cd3ef3bdfb69f7099907fdae250a7fe8",
+    "lib/shortcuts.ps1": "59e7a2ce5af74a451f784afabe67fd93f6a71941ab54129e6285831183f52021",
+    "lib/psmodules.ps1": "b29b399e3bde8651ccd42b3878bbc3dbe54898e29b94fa74df5a066f09f800ba",
+    "lib/depends.ps1": "8507019f4259c9da9b5ed0c93c6df3bd9d5dfb2dda0531acb637497619cb66fe",
+    "lib/manifest.ps1": "3da46c38cf92911f83c74e20ea58ccce401798e91221117b7b24a6295974fa45",
+    "lib/buckets.ps1": "df0e3a5be8295854898c0af7c874066ec3dffdcf246097d0b047600b5cb66318",
+    "lib/commands.ps1": "a51c1d37147ccc9702dc1d390cd01dfbd6ee45a28ea36ebfccbff93cf867d3b1",
+    "lib/decompress.ps1": "c3308a4e475e87a60798743541f3e4d3cb70cc0531b86f6d54a570d6616461ab",
+    "lib/download.ps1": "67974132848d000ea5e9c82cf0840198886fa60ef273c402e3b5929e17d7d93e",
+    "libexec/scoop-install.ps1": "da4333fe373eb0cbdc8aa429d48201a318bb85d79aa39f7d3dd60caf0bfd6c04",
+    "libexec/scoop-uninstall.ps1": "8b10939cf886f125f9d1e2373f191003f7a7988c0b790d63c477d4e2cc435bee",
+    "libexec/scoop-update.ps1": "af4297eae7a29786eeb9bc50f79647f9612973710dc8ae328040bff3b781b16c",
+    "libexec/scoop-reset.ps1": "be01e1ebc1c88e58951251b1ca7437f1aebb5a5b0edf796ce3b7311e7b5f7647"
+  }
+}
