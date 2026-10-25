@@ -40,7 +40,7 @@ func (Native) Start(ctx context.Context, spec Command) (Process, error) {
 	if !filepath.IsAbs(spec.Executable) || (spec.Mode != Wait && spec.Mode != Detach) {
 		return nil, fmt.Errorf("invalid application process specification")
 	}
-	for _, s := range append([]string{spec.Executable, spec.Directory}, spec.Args...) {
+	for _, s := range append([]string{spec.Executable, spec.Directory, spec.WindowsCommandLine}, spec.Args...) {
 		if strings.ContainsRune(s, 0) {
 			return nil, fmt.Errorf("NUL in application process specification")
 		}
@@ -61,12 +61,17 @@ func (Native) Start(ctx context.Context, spec Command) (Process, error) {
 	cmd.WaitDelay = 500 * time.Millisecond
 	flags := uint32(windows.CREATE_SUSPENDED)
 	if spec.Mode == Detach {
-		flags |= windows.DETACHED_PROCESS | windows.CREATE_NEW_PROCESS_GROUP | windows.CREATE_BREAKAWAY_FROM_JOB
+		flags |= windows.CREATE_NEW_PROCESS_GROUP | windows.CREATE_BREAKAWAY_FROM_JOB
+		if spec.HiddenConsole {
+			flags |= windows.CREATE_NEW_CONSOLE
+		} else {
+			flags |= windows.DETACHED_PROCESS
+		}
 		// nil streams deliberately map to NUL, never a launcher terminal/pipe.
 	} else {
 		cmd.Stdin, cmd.Stdout, cmd.Stderr = spec.Streams.In, spec.Streams.Out, spec.Streams.Err
 	}
-	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: flags}
+	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: flags, HideWindow: spec.HiddenConsole, CmdLine: spec.WindowsCommandLine}
 	p.command = cmd
 	if err := cmd.Start(); err != nil {
 		windows.CloseHandle(job)

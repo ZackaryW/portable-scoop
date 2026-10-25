@@ -75,3 +75,31 @@ introduce the package runner's private global Git config, hook/template paths,
 or prompt restrictions. Neither builder modifies the caller's process environment
 or user/machine environment settings. Applications themselves run with the user's
 normal permissions; this is not an application runtime sandbox.
+
+## Handler argument scope
+
+Native EXE/COM targets receive the native argument vector. PowerShell scripts use
+Windows PowerShell 5.1 with profiles disabled and text output. A private bounded
+JSON payload carries values without command-line re-quoting. Declared named
+parameters (including aliases and unambiguous abbreviations) bind through an
+ordinary parameter splat; undeclared options and positional values remain ordered
+array data. A named value can be a separate token or `-Name:value`. Switches accept
+bare flags or explicit `true`/`false` (`$true`/`$false`, `1`/`0`) values. Duplicate
+or ambiguous named parameters and missing values fail before script execution.
+Argument strings are never evaluated as source. Console stdin stays connected in
+wait mode, including scripts that read `[Console]::In`.
+
+Batch scripts use fixed Windows CMD with AutoRun and delayed expansion disabled.
+The dedicated codec qualifies empty arguments, spaces, Unicode, percent signs,
+exclamation marks, carets, shell/redirection metacharacters, named option strings,
+and trailing backslashes as batch parameters (`%~1`, etc.). Embedded quotes, NUL,
+line breaks, and expanded command lines beyond the qualified 8,000-unit bound
+fail explicitly. Batch files forwarding `%*` to another program perform their
+own additional argument parsing; that program's quoting rules still apply.
+
+Detached script hosts use a hidden console with NUL streams. They finish consuming
+their startup payload before handoff, so no invocation files or launcher terminal
+handles are required afterward. Native GUI targets use ordinary visible-window
+creation. Successful handoff reports startup acknowledgement; wait mode reports
+the application root's eventual status. A foreground root that launches a child
+can return while that child continues. Stream draining after root exit is bounded.

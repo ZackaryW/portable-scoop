@@ -47,6 +47,12 @@ type Command struct {
 	Directory         string
 	Mode              Mode
 	Streams           Streams
+	// HiddenConsole is for console-host handlers during detached startup.
+	// Native GUI targets never request it.
+	HiddenConsole bool
+	// WindowsCommandLine is produced only by the explicit batch codec. It is
+	// never accepted from a public invocation or delegation envelope.
+	WindowsCommandLine string
 }
 
 // Starter owns startup until Commit transfers a detached process's lifetime.

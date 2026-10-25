@@ -36,13 +36,32 @@ func TestApplicationProcessFixture(t *testing.T) {
 	}
 	dir := os.Getenv("PSPE_TEST_DIR")
 	exe, _ := os.Executable()
-	if mode == "streams" {
+	if mode == "streams" || mode == "batch-detached" {
 		input, _ := io.ReadAll(os.Stdin)
 		cwd, _ := os.Getwd()
-		_ = json.NewEncoder(os.Stdout).Encode(struct {
+		var captured []string
+		for i := 0; i < 16; i++ {
+			captured = append(captured, os.Getenv("PSPE_TEST_CAPTURE_"+strconv.Itoa(i)))
+		}
+		var output io.Writer = os.Stdout
+		if mode == "batch-detached" {
+			file, err := os.Create(filepath.Join(dir, "batch-detached.json"))
+			if err != nil {
+				panic(err)
+			}
+			defer file.Close()
+			output = file
+		}
+		_ = json.NewEncoder(output).Encode(struct {
 			Input, Cwd string
 			Args       []string
-		}{string(input), cwd, os.Args[3:]})
+			Captured   []string
+		}{string(input), cwd, os.Args[3:], captured})
+		if mode == "batch-detached" {
+			_ = os.WriteFile(filepath.Join(dir, mode+".pid"), []byte(strconv.Itoa(os.Getpid())), 0600)
+			time.Sleep(30 * time.Second)
+			os.Exit(0)
+		}
 		fmtWrite(os.Stderr, "application stderr\n")
 		os.Exit(37)
 	}
