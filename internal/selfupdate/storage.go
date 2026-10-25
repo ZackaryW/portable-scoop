@@ -151,7 +151,11 @@ func (Disk) Stage(ctx context.Context, t runtimeinstall.Target, r Release, net D
 	return tx, nil
 }
 func extract(root string) error {
-	z, err := zip.OpenReader(filepath.Join(root, "candidate.zip"))
+	return extractArchive(filepath.Join(root, "candidate.zip"), root)
+}
+
+func extractArchive(archivePath, root string) error {
+	z, err := zip.OpenReader(archivePath)
 	if err != nil {
 		return err
 	}
