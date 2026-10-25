@@ -24,6 +24,18 @@ type Coordinator struct {
 // Do serializes preparation, execution, and artifact capture for every backend
 // operation, including reads whose upstream implementation can update caches.
 func (c Coordinator) Do(ctx context.Context, local environment.Context, execute func() (int, error)) (int, error) {
+	return c.withLock(ctx, local, func(paths environment.Paths) (int, error) { return c.operation(paths, execute) })
+}
+
+// PrepareLaunch holds the same operation lock through validation and process
+// creation. It neither records a package operation nor captures application edits.
+// create must return after startup, before waiting for the application session.
+func (c Coordinator) PrepareLaunch(ctx context.Context, local environment.Context, create func(environment.Paths) error) error {
+	_, err := c.withLock(ctx, local, func(paths environment.Paths) (int, error) { return 0, create(paths) })
+	return err
+}
+
+func (c Coordinator) withLock(ctx context.Context, local environment.Context, action func(environment.Paths) (int, error)) (int, error) {
 	id, paths, err := environment.Load(environment.OSFilesystem{}, local.Paths.Root)
 	if err != nil {
 		return 0, err
@@ -57,11 +69,29 @@ func (c Coordinator) Do(ctx context.Context, local environment.Context, execute 
 	if info, err := os.Lstat(filepath.Join(paths.State, "operation.lock")); err != nil || !info.Mode().IsRegular() {
 		return 0, fmt.Errorf("operation lock is not an owned regular file")
 	}
+	lockedID, lockedPaths, err := environment.Load(environment.OSFilesystem{}, paths.Root)
+	if err != nil {
+		return 0, err
+	}
+	if lockedID.ID != local.Identity.ID || lockedPaths != paths {
+		return 0, fmt.Errorf("environment identity changed while acquiring operation lock")
+	}
+	if err := validateLayout(paths); err != nil {
+		return 0, err
+	}
 	if c.Prepare != nil {
 		if err = c.Prepare(paths); err != nil {
 			return 0, fmt.Errorf("portable preparation failed: %w", err)
 		}
 	}
+	if err := ctx.Err(); err != nil {
+		return 0, err
+	}
+	return action(paths)
+}
+
+func (c Coordinator) operation(paths environment.Paths, execute func() (int, error)) (int, error) {
+	var err error
 	statusPath := filepath.Join(paths.State, "operation.json")
 	var previous operationStatus
 	if err := readJSON(paths.Root, statusPath, &previous); err == nil {
