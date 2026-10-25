@@ -9,6 +9,7 @@ This experimental implementation supports portable initialization, explicit host
 registrations, central delegation, and a constrained pinned Scoop backend. Release
 qualification is tracked in OpenSpec; treat development archives accordingly.
 See [setup and two environments](docs/setup.md),
+[internet installation](docs/internet-install.md),
 [environment registrations](docs/environments.md), and the
 [supported package policy](docs/portable-policy.md).
 

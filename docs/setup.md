@@ -1,5 +1,8 @@
 # Setup and two-environment use
 
+For a Scoop-style PowerShell download command with Host/Store selection and a
+custom destination, see [internet installation](internet-install.md).
+
 Extract a verified Windows x64 release archive. No Go compiler is needed on the
 target. The initial supported runtime is Windows PowerShell 5.1 FullLanguage on
 local NTFS. Initialization tests x64, locking, and junction support before making
