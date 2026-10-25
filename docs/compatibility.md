@@ -23,3 +23,7 @@ Architecture selection precedes effect inspection. All branch objects must be st
 The first hook recipe recognizes the whole `Test-Path` / `New-Item` pattern used by SpaceSniffer to initialize `SpaceSnifferConfig.xml`. It requires the same simple filename under `$dir` and `$persist_dir` and a matching `persist` declaration. Additional statements, different commands, paths, or missing persistence reject. The executor creates the file before persistence linking and leaves existing persisted content intact.
 
 Adding support means changing the corresponding field handler, adding its typed action executor if needed, and verifying both accepted behavior and rejection boundaries. Do not add generic script evaluation or partial script matching. Manifest acceptance is not application-runtime sandboxing or proof that an application writes no files outside its Store.
+
+## Backend compatibility
+
+These replacements require backend patch `portable-fields-v1.0`. Both backend metadata and release inventory name that revision. An older Store fails verification before execution: copying new launcher executables into it is insufficient. Use a complete matching distribution to initialize a fresh Store. Automatic Store backend migration and self-update are separate work; this change does not mutate an old backend or ordinary Scoop.

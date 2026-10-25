@@ -9,12 +9,14 @@ import (
 
 	"portscoop/internal/environment"
 	"portscoop/internal/metadata"
+	"portscoop/internal/shimargs"
 )
 
 // ShimDescriptor describes original targets, never an executable wrapper command.
 // Unsupported is explicit even for wrappers recognized by the ownership scanner.
 type ShimDescriptor struct {
 	Name, Target, Handler, Unsupported string
+	Arguments                          []string
 }
 
 var shimName = regexp.MustCompile(`^[a-zA-Z0-9_][a-zA-Z0-9_.+-]*$`)
@@ -84,6 +86,14 @@ func (m Manager) OwnedShims(paths environment.Paths) ([]ShimDescriptor, error) {
 			}
 			if strings.EqualFold(filepath.Ext(a.Path), ".shim") {
 				nativeMetadata = true
+				text := strings.TrimPrefix(strings.ReplaceAll(string(a.Content), "\r\n", "\n"), "\ufeff")
+				lines := strings.Split(strings.TrimRight(text, "\n"), "\n")
+				if len(lines) == 2 && strings.HasPrefix(lines[1], "args = ") {
+					d.Arguments, err = shimargs.Parse(strings.TrimPrefix(lines[1], "args = "))
+					if err != nil {
+						return nil, fmt.Errorf("shim %s: %w", name, err)
+					}
+				}
 			}
 		}
 		if binary != nativeMetadata {
@@ -116,8 +126,8 @@ func descriptorTarget(data []byte) (string, string) {
 	switch {
 	case strings.HasPrefix(lines[0], `path = "`):
 		target = strings.TrimSuffix(strings.TrimPrefix(lines[0], `path = "`), `"`)
-		if len(lines) > 1 {
-			unsupported = "fixed shim arguments are not qualified"
+		if len(lines) > 2 || (len(lines) == 2 && !strings.HasPrefix(lines[1], "args = ")) {
+			unsupported = "nonstandard native shim arguments"
 		}
 	case strings.HasPrefix(lines[0], "@rem "):
 		target = strings.TrimPrefix(lines[0], "@rem ")

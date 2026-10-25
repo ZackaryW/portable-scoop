@@ -34,7 +34,7 @@ func TestCommandPolicy(t *testing.T) {
 }
 
 func TestManifestSubset(t *testing.T) {
-	good := fixtureManifest(t, map[string]any{"env_set": map[string]string{"TOOL_HOME": "$dir", "TOOL_DATA": "$persist_dir/data", "TOOL_FLAG": "1"}, "env_add_path": []string{"tools"}, "persist": []any{"data", []string{"settings", "configuration"}}, "shortcuts": [][]string{{"tools/tool.cmd", "Tool Shortcut"}}, "psmodule": map[string]string{"name": "ToolModule"}})
+	good := fixtureManifest(t, map[string]any{"env_set": map[string]string{"TOOL_HOME": "$dir", "TOOL_DATA": "$persist_dir/data", "TOOL_FLAG": "1"}, "env_add_path": []string{"tools"}, "persist": []any{"data", []string{"settings", "configuration"}}, "shortcuts": [][]string{{"tools/tool.cmd", "Tool Shortcut"}}})
 	manifest, err := DecodeManifest(good)
 	if err != nil {
 		t.Fatal(err)
@@ -45,7 +45,7 @@ func TestManifestSubset(t *testing.T) {
 	badFields := []map[string]any{
 		{"pre_install": "Remove-Item host"}, {"installer": map[string]string{"file": "setup.exe"}},
 		{"uninstaller": map[string]string{"script": "Invoke-Expression data"}},
-		{"architecture": map[string]any{"64bit": map[string]string{"url": "https://example.test/tool.zip", "hash": strings.Repeat("a", 64)}, "32bit": map[string]string{"post_install": "bad"}}},
+		{"psmodule": map[string]string{"name": "ToolModule"}},
 		{"bin": "../../host.cmd"}, {"bin": [][]string{{"tool.cmd", "../../host"}}},
 		{"bin": [][]string{{"tool.cmd", "tool", "; run-command"}}},
 		{"persist": [][]string{{"data", "../../host"}}}, {"extract_to": `C:\host`},

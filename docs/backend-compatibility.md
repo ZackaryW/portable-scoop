@@ -69,7 +69,7 @@ environment persistence, suppressed shortcuts/modules, preserved package data,
 and unchanged guest host-state and ordinary-Scoop sentinels. This is the adapter
 fixture; full CLI, two-environment, and release qualification remain in group 9.
 
-## Adapter revision portable-zip-v1.1
+## Adapter revision portable-fields-v1.0
 
 `scripts/prepare-backend.ps1` verifies the upstream inputs, uses PowerShell's AST
 to replace named functions at recorded patch sites, and emits every resulting
@@ -80,8 +80,9 @@ the engine payload.
 The replacement system layer records values in
 `.portscoop/state/environment.json`, atomically replaces that file, and applies
 them only to managed child processes. It never reads/writes persistent host
-environment variables or broadcasts environment changes. Shortcut and module
-registration/removal are suppressed. Missing shim targets fail instead of using
+environment variables or broadcasts environment changes. Shortcuts are compiled
+into Store-owned bin aliases; module declarations are rejected until portable
+discovery exists. Missing shim targets fail instead of using
 an executable from PATH. ZIP extraction always uses the Windows PowerShell
 archive implementation. Git-backed bucket operations require standalone Git at
 `%ProgramFiles%\Git\cmd\git.exe`; another Scoop's Git is not used as a helper.
@@ -97,8 +98,9 @@ flattened to the supported 64bit declaration, and frozen in the private request.
 The patched manifest reader and installed-manifest writer consume this snapshot,
 preventing a changed bucket from replacing a checked declaration before install.
 Saved manifests from every affected installed version are checked before
-uninstall/update/reset/cleanup. Hooks and installers additionally fail inside
-the patched engine if reached unexpectedly.
+uninstall/update/reset/cleanup. The recognized persisted-file hook runs only its
+frozen typed action, with execution-time containment checks. Other hooks and
+installers fail inside the patched engine if reached unexpectedly.
 
 Verification checks the pin/patch/protocol, all recorded engine and adapter
 artifacts, required libraries, root-local config, and unrecorded added files.
@@ -127,9 +129,8 @@ preserve that directory for inspection and initialize a new empty destination.
 | Host environment and shortcut isolation | Two-root matrix preserved the other root, ordinary-Scoop sentinels, persistent environment, and host integration | Supported package operations only |
 | Git-backed buckets | Fixed standalone Git prerequisite with isolated config/hooks/templates | Public HTTP(S) or explicit local repositories; qualification report records the tested Git version |
 
-The initial package policy is fixed-version 64bit HTTP(S) ZIP payloads with
-SHA-256 hashes, relative package paths, simple shims, declarative environment
-values, and validated persistence/shortcut/module metadata. Hooks, external
-installers, custom command scripts, generated `@version` manifests, and unmanaged
-engine updates are outside this first compatibility subset. The full contract
-and preflight tests are documented in `docs/portable-policy.md`.
+The table above records qualification of the earlier ZIP adapter, not new
+real-application certification. The current per-field policy, supported digest
+algorithms and portable replacements are documented in `docs/compatibility.md`.
+Controlled tests cover the new executor, frozen actions, native fixed arguments,
+and relocation; no arbitrary script or application sandbox is claimed.

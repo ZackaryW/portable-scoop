@@ -23,7 +23,7 @@ Get-ChildItem -LiteralPath $stage -File -Recurse -Force | Sort-Object FullName |
     $relative=$_.FullName.Substring($stage.Length+1).Replace('\','/')
     $artifacts[$relative]=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
 }
-$metadata=@{schema_version=1;patch_revision='portable-zip-v1.1';artifacts=$artifacts} | ConvertTo-Json -Depth 5
+$metadata=@{schema_version=1;patch_revision='portable-fields-v1.0';artifacts=$artifacts} | ConvertTo-Json -Depth 5
 [IO.File]::WriteAllText((Join-Path $stage 'release.json'),$metadata,(New-Object Text.UTF8Encoding($false)))
 & (Join-Path $stage 'portscoop.exe') __portscoop_verify_release
 if ($LASTEXITCODE -ne 0) { throw 'Release payload verification failed' }

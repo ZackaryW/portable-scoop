@@ -1,5 +1,27 @@
 # Upstream backend probe
 
+## Per-field compatibility checks
+
+`go test ./internal/compatibility ./internal/backend/scoop` includes the pure
+compiler tests and controlled Windows PowerShell action tests. The latter runs
+only owned temporary filesystem fixtures, with no application installation or
+host registration. To also exercise the prepared backend's checksum functions:
+
+```powershell
+.\scripts\prepare-backend.ps1 -Destination .\.work\field-backend
+.\tests\backend\compatibility-tests.ps1 -Root .\.work\field-action-fixture -Backend .\.work\field-backend
+$env:PORTSCOOP_TEST_BACKEND_PAYLOAD = (Resolve-Path .\.work\field-backend).Path
+go test ./internal/backend/scoop -run TestPreparedPayloadMatchesRecordedArtifacts
+Remove-Item Env:\PORTSCOOP_TEST_BACKEND_PAYLOAD
+```
+
+Use fresh fixture directories. These checks are not a real-application VM
+qualification. Historical reports below describe their recorded backend
+revision. The current VM fixture checks shortcut aliases and rejects unsupported
+module integration; it has not been rerun for this compatibility change.
+
+## Unmodified upstream effects
+
 This probe intentionally measures the unmodified engine's persistent user
 environment, Start Menu, and PowerShell module integration. Run it only in a
 disposable Windows user/VM. A temporary working folder or child process is not

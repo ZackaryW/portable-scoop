@@ -41,7 +41,8 @@ try {
     $moduleName = 'PortscoopAdapter' + $id.Replace('-','')
     $variable = 'PSP_FIXTURE_' + $id.Replace('-','')
     $settings = @{}; $settings[$variable] = '$dir'
-    $manifest = @{version='1.0';url="$url/probe.zip";hash=(Get-FileHash "$payload\probe.zip").Hash.ToLowerInvariant();bin='tools\probe.cmd';env_add_path=@('tools');env_set=$settings;persist=@('data');shortcuts=@(,@('tools\probe.cmd',$shortcutName));psmodule=@{name=$moduleName}}
+    # Direct adapter fixture supplies the compiled bin form, without host integration.
+    $manifest = @{version='1.0';url="$url/probe.zip";hash=(Get-FileHash "$payload\probe.zip").Hash.ToLowerInvariant();bin=@('tools\probe.cmd',@('tools\probe.cmd',$shortcutName.Replace(' ','-'),''));env_add_path=@('tools');env_set=$settings;persist=@('data')}
     $powershell = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
     $env:PORTSCOOP_ROOT=$root; $env:SCOOP=$scoop; $env:SCOOP_GLOBAL="$scoop\global"; $env:SCOOP_CACHE="$scoop\cache"; $env:TEMP="$scoop\tmp"; $env:TMP=$env:TEMP
     function Invoke-Adapter([string[]]$Arguments, [string]$Name) {
@@ -56,7 +57,7 @@ try {
     $state = Get-Content "$control\state\environment.json" -Raw | ConvertFrom-Json
     $observations.portable_environment_saved = $state.values.$variable -eq "$scoop\apps\probe-tool\current"
     $observations.shortcut_suppressed = -not (Test-Path (Join-Path ([Environment]::GetFolderPath('StartMenu')) "Programs\Scoop Apps\$shortcutName.lnk"))
-    $observations.module_suppressed = -not (Test-Path (Join-Path ([Environment]::GetFolderPath('MyDocuments')) "WindowsPowerShell\Modules\$moduleName"))
+    $observations.host_module_absent = -not (Test-Path (Join-Path ([Environment]::GetFolderPath('MyDocuments')) "WindowsPowerShell\Modules\$moduleName"))
     Invoke-Adapter @('list') 'list'
     $manifest.version='2.0'
     Invoke-Adapter @('update','probe-tool') 'update'

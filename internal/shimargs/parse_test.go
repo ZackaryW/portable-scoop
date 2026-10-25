@@ -15,6 +15,7 @@ func TestLiteralArguments(t *testing.T) {
 		{`"trailing\\" a\b`, []string{`trailing\`, `a\b`}},
 		{`"a""b"`, []string{`a"b`}},
 		{`& | ;`, []string{"&", "|", ";"}},
+		{`--url=https://example.test/item`, []string{"--url=https://example.test/item"}},
 	} {
 		got, err := Parse(tc.text)
 		if err != nil || !reflect.DeepEqual(got, tc.want) {

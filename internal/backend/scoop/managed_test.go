@@ -1,6 +1,7 @@
 package scoop
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -11,10 +12,40 @@ import (
 	"strings"
 	"testing"
 
+	"portscoop/internal/compatibility"
 	"portscoop/internal/environment"
 	"portscoop/internal/runner"
 	"portscoop/internal/testutil"
 )
+
+func TestManagedFreezesPortableActionsAndReportsDecisions(t *testing.T) {
+	local := managedFixture(t)
+	manifest := map[string]any{
+		"version": "1.0", "url": "https://example.test/tool.zip", "hash": "sha1:" + strings.Repeat("a", 40),
+		"pre_install": []string{`if (-not (Test-Path -Path "$persist_dir\config.xml" -PathType Leaf)) {`, `    New-Item -Path "$dir\config.xml" -ItemType File -Force | Out-Null`, `}`},
+		"persist":     "config.xml", "shortcuts": [][]string{{"tool.exe", "My Tool"}},
+	}
+	data, _ := json.Marshal(manifest)
+	path := filepath.Join(local.Paths.Buckets, "main", "bucket", "tool.json")
+	fixtureFile(t, path, data)
+	process := &captureProcess{run: func(runner.Command) { fixtureFile(t, path, []byte(`{"pre_install":"Write-Host changed"}`)) }}
+	var notices bytes.Buffer
+	_, err := (Managed{Runner: process}).Execute(context.Background(), local, []string{"install", "tool"}, runner.Streams{Err: &notices})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var frozen map[string]FrozenManifest
+	if err := json.Unmarshal(process.request.Manifests, &frozen); err != nil {
+		t.Fatal(err)
+	}
+	item := frozen["tool"]
+	if len(item.Actions) != 1 || item.Actions[0] != (compatibility.Action{Phase: "pre_install", Kind: "ensure-persisted-file", Path: "config.xml"}) || item.Manifest["shortcuts"] != nil || !strings.Contains(string(item.Manifest["bin"]), "My-Tool") {
+		t.Fatalf("bad frozen plan: %+v", item)
+	}
+	if !strings.Contains(notices.String(), "pre_install rewrite") || !strings.Contains(notices.String(), "shortcuts rewrite") {
+		t.Fatal(notices.String())
+	}
+}
 
 func fixtureFile(t *testing.T, path string, data []byte) {
 	t.Helper()

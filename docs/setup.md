@@ -87,7 +87,7 @@ old deployment until the replacement works. Portable rollback must preserve
 `environment.json`, apps, persistence, registry IDs, and operation state. Replace
 only the two launchers and managed engine/adapter payload from a compatible
 release. This first state contract requires schema/protocol 1 and backend patch
-`portable-zip-v1.1`; different patches/pins fail verification rather than attempting
+`portable-fields-v1.0`; different patches/pins fail verification rather than attempting
 an unsupported state downgrade. Keep an offline root backup before a release
 change. There is no arbitrary package-data rollback guarantee.
 

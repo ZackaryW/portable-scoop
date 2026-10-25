@@ -8,13 +8,16 @@ import (
 	"sort"
 	"strings"
 
+	"portscoop/internal/compatibility"
 	"portscoop/internal/environment"
 	"portscoop/internal/metadata"
 )
 
 type FrozenManifest struct {
-	Bucket   string   `json:"bucket"`
-	Manifest Manifest `json:"manifest"`
+	Bucket    string                   `json:"bucket"`
+	Manifest  Manifest                 `json:"manifest"`
+	Decisions []compatibility.Decision `json:"decisions,omitempty"`
+	Actions   []compatibility.Action   `json:"actions,omitempty"`
 }
 
 // containedFile resolves reparse points before reading managed metadata.
@@ -223,7 +226,7 @@ func Plan(paths environment.Paths, op Operation) (map[string]FrozenManifest, err
 	var closure []string
 	for _, item := range plan {
 		closure = append(closure, item.Name)
-		result[appName(item.Name)] = FrozenManifest{Bucket: source.buckets[strings.ToLower(item.Name)], Manifest: item.Manifest}
+		result[appName(item.Name)] = FrozenManifest{Bucket: source.buckets[strings.ToLower(item.Name)], Manifest: item.Manifest, Decisions: item.Decisions, Actions: item.Actions}
 	}
 	if err := validateSaved(paths, closure); err != nil {
 		return nil, err

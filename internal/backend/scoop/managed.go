@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
 
+	"portscoop/internal/compatibility"
 	"portscoop/internal/environment"
 	"portscoop/internal/relocation"
 	"portscoop/internal/runner"
@@ -31,6 +33,20 @@ func (b Managed) executeLocked(ctx context.Context, local environment.Context, o
 	manifests, err := Plan(local.Paths, op)
 	if err != nil {
 		return 0, fmt.Errorf("portable preflight: %w", err)
+	}
+	if streams.Err != nil {
+		names := make([]string, 0, len(manifests))
+		for name := range manifests {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		for _, name := range names {
+			for _, decision := range manifests[name].Decisions {
+				if decision.Disposition == compatibility.Rewrite || decision.Disposition == compatibility.Skip {
+					fmt.Fprintf(streams.Err, "portscoop: %s: %s %s: %s\n", name, decision.Field, decision.Disposition, decision.Reason)
+				}
+			}
+		}
 	}
 	if err = CheckRuntime(ctx, local.Paths, b.Runner); err != nil {
 		return 0, err

@@ -71,7 +71,8 @@ func (l Local) Start(ctx context.Context, local environment.Context, in Invocati
 		if err != nil {
 			return err
 		}
-		spec := Command{Executable: shim.Target, Args: append([]string{}, in.Args...), Environment: child, Directory: in.Directory, Mode: in.Mode, Streams: streams}
+		args := append(append([]string{}, shim.Arguments...), in.Args...)
+		spec := Command{Executable: shim.Target, Args: args, Environment: child, Directory: in.Directory, Mode: in.Mode, Streams: streams}
 		switch shim.Handler {
 		case "native":
 			process, err = starter.Start(ctx, spec)

@@ -75,3 +75,47 @@ function env($name, $global, $val) {
 function strip_path($orig_path, $dir) { Split-PathLikeEnvVar @($dir) $orig_path }
 function add_first_in_path($dir, $global) { Add-Path @($dir) -Global:$global -Force }
 function remove_from_path($dir, $global) { Remove-Path @($dir) -Global:$global }
+
+# Only typed operations from the frozen request reach this executor. No manifest
+# script text is evaluated. Check ancestors as well as the destination itself.
+function Assert-PortscoopActionPath {
+    param([string]$Root, [string]$Path)
+    $full = [IO.Path]::GetFullPath($Path)
+    $rootPath = [IO.Path]::GetFullPath($Root).TrimEnd('\')
+    if (-not $full.StartsWith($rootPath + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'Portable action path escapes Store' }
+    $cursor = $full
+    while ($cursor.Length -ge $rootPath.Length) {
+        try { $attributes = [IO.File]::GetAttributes($cursor) }
+        catch [IO.FileNotFoundException] { $attributes = 0 }
+        catch [IO.DirectoryNotFoundException] { $attributes = 0 }
+        if (($attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'Portable action path contains a reparse point' }
+        if ($cursor.Equals($rootPath, [StringComparison]::OrdinalIgnoreCase)) { break }
+        $cursor = [IO.Path]::GetDirectoryName($cursor)
+    }
+}
+
+function Invoke-PortscoopAction {
+    param([psobject]$Action, [string]$App, [string]$Version, [string]$Directory, [string]$PersistDirectory)
+    if ($Action.kind -cne 'ensure-persisted-file' -or $Action.phase -cne 'pre_install') { throw 'Unsupported portable action' }
+    foreach ($component in @($App, $Version, [string]$Action.path)) {
+        if ($component -notmatch '\A[A-Za-z0-9][A-Za-z0-9._+-]*\z' -or $component.EndsWith('.') -or
+            ($component.Split('.')[0] -match '\A(CON|PRN|AUX|NUL|COM[0-9]|LPT[0-9])\z')) { throw 'Invalid portable action path component' }
+    }
+    if ($App -ieq 'scoop' -or $Version -ieq 'current') { throw 'Reserved portable action layout' }
+    $root = [IO.Path]::GetFullPath($env:PORTSCOOP_ROOT)
+    $expectedDir = Join-Path $root "scoop\apps\$App\$Version"
+    $expectedPersist = Join-Path $root "scoop\persist\$App"
+    if (-not ([IO.Path]::GetFullPath($Directory)).Equals($expectedDir, [StringComparison]::OrdinalIgnoreCase) -or
+        -not ([IO.Path]::GetFullPath($PersistDirectory)).Equals($expectedPersist, [StringComparison]::OrdinalIgnoreCase)) { throw 'Portable action layout differs from Store' }
+    $target = Join-Path $expectedDir $Action.path
+    $saved = Join-Path $expectedPersist $Action.path
+    Assert-PortscoopActionPath -Root $root -Path $target
+    Assert-PortscoopActionPath -Root $root -Path $saved
+    if ([IO.Directory]::Exists($target) -or [IO.Directory]::Exists($saved)) { throw 'Portable configuration path is a directory' }
+    if ([IO.File]::Exists($saved)) { return }
+    # Never truncate an existing file (including a preexisting hard link).
+    if (-not [IO.File]::Exists($target)) {
+        $stream = [IO.File]::Open($target, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
+        $stream.Dispose()
+    }
+}

@@ -3,8 +3,11 @@ package shimargs
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 )
+
+var drivePath = regexp.MustCompile(`(^|[= \t])[A-Za-z]:[\\/]`)
 
 // Parse implements Windows backslash/quote argument rules. Dynamic expressions
 // and absolute paths are excluded from fixed declarations to avoid baking host
@@ -60,7 +63,7 @@ func Parse(text string) ([]string, error) {
 		}
 		value := b.String()
 		// Reject drive/UNC paths even in --option=C:\... forms.
-		if strings.Contains(value, `:\`) || strings.Contains(value, ":/") || strings.Contains(value, `\\`) {
+		if drivePath.MatchString(value) || strings.Contains(value, `\\`) {
 			return nil, fmt.Errorf("fixed arguments cannot embed absolute host paths")
 		}
 		args = append(args, value)

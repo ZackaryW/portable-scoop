@@ -1,6 +1,7 @@
-# Portable compatibility policy v1
+# Portable compatibility policy
 
-`portable-zip-v1` is the initial manifest/command contract implemented in
+`portable-fields-v1` is the manifest contract implemented in
+`internal/compatibility/`; command classification remains in
 `internal/backend/scoop/policy.go`. It is a preflight layer, not a replacement
 package engine. The pinned adapter enforces it before package execution.
 
@@ -22,21 +23,15 @@ for a fixed package version. Downloaded engine updates are delivered only throug
 a compatible Portscoop release, with a recorded upstream/patch revision and
 verified artifact hashes.
 
-## Manifest subset
+## Manifest fields
 
-- Fixed versions, a 64bit architecture branch when architecture overrides exist,
-  and HTTP(S) ZIP payloads with SHA-256 for every download.
-- Relative extraction, bin, and persistence paths. Simple bin entries/aliases
-  are supported; injected shim argument strings are not part of this subset.
-- Environment declarations contain literals or `$dir`, `$original_dir`, and
-  `$persist_dir` substitutions. Executable interpolation, backtick escapes,
-  reserved root/runtime/Git control overrides, and case-conflicting names fail.
-- Shortcut and module metadata are validated; the adapter suppresses host
-  integration. Their presence does not authorize host registration.
-- Install/uninstall hooks, external installers, unsupported extraction helpers,
-  unknown executable fields, and nightly/unhashed downloads fail preflight.
-- Bucket-maintainer metadata such as `checkver` and `autoupdate` can be retained
-  as data; this command surface never evaluates it or generates manifests from it.
+See [Manifest compatibility](compatibility.md) for the per-field use/rewrite/skip/reject
+contract and supported replacements. HTTP(S) ZIP payloads support declared SHA-256,
+SHA-1, SHA-512, and MD5 digests; release integrity still requires SHA-256. Shortcut
+entries become Store-owned launch aliases. Native shims support literal fixed
+arguments. One complete persisted-file initialization hook pattern has a typed
+replacement; unknown scripts and required unsupported integration fail explicitly.
+Module discovery is unsupported, rather than silently ignored.
 
 Before install/update/uninstall, the entire dependency closure is loaded,
 validated, deduplicated, and cycle-checked with a dependency-first execution
@@ -55,7 +50,7 @@ each environment in this release.
 ## Verification
 
 `go test ./internal/backend/scoop` covers accepted commands/manifests, global and
-raw-command bypasses, executable fields in architecture branches, path traversal,
+raw-command bypasses, selected architecture effects, path traversal,
 environment interpolation/overrides, dependency rejection, and cycles. The
 isolated upstream ZIP fixture is recorded separately in `tests/backend/evidence`;
 the adapted-backend and release qualification evidence is stored there too.

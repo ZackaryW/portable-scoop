@@ -85,7 +85,7 @@ try {
     while(-not(Test-Path $ready)){if($server.HasExited-or[DateTime]::UtcNow-gt$deadline){throw 'Fixture HTTP server did not start'};Start-Sleep -Milliseconds 100}
     $url=(Get-Content $ready -Raw|ConvertFrom-Json).url
     $hash=(Get-FileHash "$payload\package.zip").Hash.ToLowerInvariant()
-    $manifest=@{version='1.0';url="$url/package.zip";hash=$hash;bin=@(,@('tools\probe.cmd','fixture-tool'));persist=@('data');env_set=@{PSP_FIXTURE_TOOL='$dir'};env_add_path=@('tools');depends='dep';shortcuts=@(,@('tools\probe.cmd','PSP CLI fixture'));psmodule=@{name='PspCliFixture'}}
+    $manifest=@{version='1.0';url="$url/package.zip";hash=$hash;bin=@(,@('tools\probe.cmd','fixture-tool'));persist=@('data');env_set=@{PSP_FIXTURE_TOOL='$dir'};env_add_path=@('tools');depends='dep';shortcuts=@(,@('tools\probe.cmd','PSP CLI fixture'))}
     $dependency=@{version='1.0';url="$url/package.zip";hash=$hash;bin=@(,@('tools\probe.cmd','fixture-dependency'))}
     foreach($portable in @($work,$personal)){
         New-Item -ItemType Directory -Path "$portable\scoop\buckets\fixture\bucket" -Force | Out-Null
@@ -93,6 +93,7 @@ try {
         Write-JSON "$portable\scoop\buckets\fixture\bucket\dep.json" $dependency
     }
     $null=Invoke-PSP $centralExe @('install','fixture/tool') 'delegated-install-work'
+    $observations.shortcut_is_store_alias=Test-Path "$work\scoop\shims\psp-cli-fixture.cmd"
     $observations.dependency_is_root_local=Test-Path "$work\scoop\apps\dep\1.0\tools\probe.cmd"
     $manifest.version='1.5';Write-JSON "$personal\scoop\buckets\fixture\bucket\tool.json" $manifest
     $personalExe=Join-Path $personal 'psp.exe'
@@ -155,6 +156,9 @@ try {
     $blocked=@{};foreach($key in $dependency.Keys){$blocked[$key]=$dependency[$key]};$blocked.depends='bad-dep'
     Write-JSON "$work\scoop\buckets\fixture\bucket\blocked.json" $blocked
     $null=Invoke-PSP $centralExe @('install','blocked') 'dependency-hook-rejected' -FailureExpected
+    Write-JSON "$work\scoop\buckets\fixture\bucket\module-blocked.json" @{version='1.0';url="$url/package.zip";hash=$hash;psmodule=@{name='PspCliFixture'}}
+    $null=Invoke-PSP $centralExe @('install','module-blocked') 'module-integration-rejected' -FailureExpected
+    $observations.module_integration_rejected_before_install=-not(Test-Path "$work\scoop\apps\module-blocked")
     $observations.preflight_before_install_mutation=(-not(Test-Path "$work\scoop\apps\blocked"))-and(-not(Test-Path "$work\scoop\apps\bad-dep"))
     $installedManifest="$personal\scoop\apps\tool\1.5\scoop-manifest.json"
     $originalManifest=[IO.File]::ReadAllBytes($installedManifest)

@@ -48,8 +48,15 @@ original `.exe` or `.com` target is used instead of executing the binary shim.
 PowerShell `.ps1` wrapper families describe a Windows PowerShell target; batch
 `.cmd`/`.bat` wrapper families describe a batch target. Recognition in the owned
 inventory is separate from qualification of an execution handler and argument
-form. An unqualified handler or argument form fails explicitly. Fixed argument
-strings embedded in shim metadata are currently unqualified and rejected.
+form. An unqualified handler or argument form fails explicitly. Native EXE/COM
+aliases support bounded literal fixed arguments in their owned `.shim` metadata.
+These are parsed using Windows quoting rules and prepended to caller arguments;
+they are never shell-evaluated. Dynamic expressions, absolute host paths, and
+fixed arguments in script wrappers remain unsupported. Calling an alias without
+caller arguments still selects detach mode, even when it has fixed arguments.
+
+Supported manifest shortcuts become Store-owned aliases: for example, `Disk View`
+becomes `Disk-View`, usable as `pspe Disk-View`. No Start Menu entry is created.
 
 Python (`.py`), Java (`.jar`), and shell-script wrappers have no qualified
 Store-bound runtime handler. They report that missing handler instead of

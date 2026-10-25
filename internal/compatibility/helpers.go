@@ -88,7 +88,19 @@ func PackageName(value string) bool {
 	return !strings.EqualFold(parts[len(parts)-1], "scoop")
 }
 func relative(value string) bool {
-	return metadata.RelativePath(value) && !strings.ContainsAny(value, "\r\n\t\"<>|?*`$")
+	if !metadata.RelativePath(value) || strings.ContainsAny(value, "\r\n\t\"<>|?*`$") {
+		return false
+	}
+	for _, part := range strings.Split(strings.ReplaceAll(value, `\`, "/"), "/") {
+		base := strings.ToUpper(strings.SplitN(part, ".", 2)[0])
+		if base == "CON" || base == "PRN" || base == "AUX" || base == "NUL" {
+			return false
+		}
+		if len(base) == 4 && (strings.HasPrefix(base, "COM") || strings.HasPrefix(base, "LPT")) && base[3] >= '0' && base[3] <= '9' {
+			return false
+		}
+	}
+	return true
 }
 func alias(value string) bool {
 	return aliasPattern.MatchString(value) && relative(value) && !strings.ContainsAny(value, `/\`)

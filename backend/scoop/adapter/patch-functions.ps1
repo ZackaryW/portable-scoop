@@ -38,18 +38,33 @@ function create_shims($manifest, $dir, $global, $arch) {
         shim $bin $false $name (substitute $arg @{ '$dir' = $dir; '$original_dir' = $original_dir; '$persist_dir' = $persist_dir })
     }
 }
-function create_startmenu_shortcuts($manifest, $dir, $global, $arch) { }
+function create_startmenu_shortcuts($manifest, $dir, $global, $arch) {
+    if ($global -or (arch_specific 'shortcuts' $manifest $arch)) { throw 'Shortcut declarations must be compiled to portable aliases' }
+}
 function rm_startmenu_shortcuts($manifest, $global, $arch) { }
 function shortcut_folder($global) { throw 'Host shortcuts are disabled in Portscoop' }
 function startmenu_shortcut { throw 'Host shortcuts are disabled in Portscoop' }
-function install_psmodule($manifest, $dir, $global) { }
-function uninstall_psmodule($manifest, $dir, $global) { }
-function ensure_in_psmodulepath($dir, $global) { }
+function install_psmodule($manifest, $dir, $global) {
+    if ($global -or $manifest.psmodule) { throw 'Portable module discovery is not implemented' }
+}
+function uninstall_psmodule($manifest, $dir, $global) {
+    if ($global -or $manifest.psmodule) { throw 'Portable module discovery is not implemented' }
+}
+function ensure_in_psmodulepath($dir, $global) { throw 'Portable module discovery is not implemented' }
 function Sync-Scoop { throw 'Engine updates require a compatible Portscoop release' }
 function Sync-Bucket { throw 'Implicit bucket updates are disabled during app updates' }
 function Invoke-HookScript {
 	param([string]$HookType, [psobject]$Manifest, [Alias('Arch','Architecture')][string]$ProcessorArchitecture)
-    if (arch_specific $HookType $Manifest $ProcessorArchitecture) { throw 'Package script hooks are disabled in Portscoop' }
+    if (-not (arch_specific $HookType $Manifest $ProcessorArchitecture)) { return }
+    if ($HookType -cne 'pre_install') { throw 'No portable replacement for this package hook' }
+    $entry = $portscoopRequest.manifests.PSObject.Properties | Where-Object { $_.Name -ieq $app } | Select-Object -First 1
+    if (-not $entry -or $entry.Value.manifest.version -cne $Manifest.version -or
+        (@($entry.Value.manifest.pre_install) -join "`n") -cne (@($Manifest.pre_install) -join "`n")) {
+        throw 'Package hook does not match the frozen manifest'
+    }
+    $actions = @($entry.Value.actions | Where-Object { $_.phase -ceq $HookType })
+    if ($actions.Count -ne 1) { throw 'Package hook has no unique approved action' }
+    Invoke-PortscoopAction -Action $actions[0] -App $app -Version $Manifest.version -Directory $dir -PersistDirectory $persist_dir
 }
 function Invoke-Installer {
     param([string]$Path, [string[]]$Name, [psobject]$Manifest, [Alias('Arch','Architecture')][string]$ProcessorArchitecture, [string]$AppName, [switch]$Global, [switch]$Uninstall)

@@ -7,7 +7,7 @@ import (
 
 func version(_ Manifest, raw json.RawMessage) (result, error) {
 	v, err := stringValue(raw)
-	if err != nil || !versionPattern.MatchString(v) || !relative(v) || strings.EqualFold(v, "nightly") {
+	if err != nil || !versionPattern.MatchString(v) || !relative(v) || strings.EqualFold(v, "nightly") || strings.EqualFold(v, "current") {
 		return unsupported("a fixed safe version is required")
 	}
 	return keep(raw)

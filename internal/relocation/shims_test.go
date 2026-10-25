@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -40,6 +41,26 @@ func TestOwnedNativeDescriptorAndCase(t *testing.T) {
 	}
 }
 
+func TestOwnedNativeArgumentsSurviveRelocation(t *testing.T) {
+	paths := nativeShimFixture(t)
+	file := filepath.Join(paths.Shims, "native.shim")
+	data, _ := os.ReadFile(file)
+	writeFixture(t, file, append(data, []byte("args = --mode \"read only\" \"\"\n")...))
+	if err := (Manager{}).Capture(paths); err != nil {
+		t.Fatal(err)
+	}
+	old := paths.Root
+	moved := filepath.Join(testutil.TempDir(t), "moved store")
+	if err := os.Rename(old, moved); err != nil {
+		t.Fatal(err)
+	}
+	paths, _ = environment.PathsAt(moved)
+	got, err := (Manager{}).ResolveOwnedShim(paths, "native")
+	if err != nil || !reflect.DeepEqual(got.Arguments, []string{"--mode", "read only", ""}) || !strings.HasPrefix(got.Target, moved) {
+		t.Fatalf("%+v %v", got, err)
+	}
+}
+
 func TestOwnedEquivalentWrapperFamily(t *testing.T) {
 	paths := relocationFixture(t)
 	got, err := (Manager{}).ResolveOwnedShim(paths, "tool")
@@ -68,7 +89,7 @@ func TestOwnedShimRejectsConflictsAndFixedArgs(t *testing.T) {
 			case "fixed native":
 				path := filepath.Join(paths.Shims, "native.shim")
 				data, _ := os.ReadFile(path)
-				writeFixture(t, path, append(data, []byte("args = --fixed\n")...))
+				writeFixture(t, path, append(data, []byte("args = $dir\n")...))
 				want = "fixed"
 			case "fixed batch":
 				name = "batch"
