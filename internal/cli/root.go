@@ -58,5 +58,6 @@ func NewWithOptions(version string, options Options) *cobra.Command {
 	root.AddCommand(newEnvironmentCommand(options))
 	root.AddCommand(releaseVerificationCommand(options))
 	addDelegationCommands(root, version, options)
+	root.AddCommand(selfUpdateCommand(options))
 	return root
 }

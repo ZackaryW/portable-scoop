@@ -99,6 +99,11 @@ The fixture server, generated manifests, and logs remain in its guest test folde
 for inspection; it is not a script to run against a normal user's environment.
 # Deploying management and execution launchers
 
+See [Updating Portscoop](self-update.md) for installation-local `psp self-update`,
+ownership requirements, compatible launcher updates, and recovery. Older releases
+without the command need a fresh complete deployment first. The updater is not
+runtime-qualified yet.
+
 Releases contain three launchers: identical management executables
 `portscoop.exe`/`psp.exe`, and the separate `pspe.exe` execution executable. New
 Host, standalone Store, and Host-created default Store deployments receive all
