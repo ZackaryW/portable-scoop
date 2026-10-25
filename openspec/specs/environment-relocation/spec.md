@@ -55,7 +55,7 @@ Operation locks SHALL cease blocking after the owning invocation terminates. A l
 - **THEN** a later invocation can acquire the lock without manually deleting a lock file
 
 ### Requirement: Prepare relocated roots before backend execution
-The system SHALL detect a changed canonical root and prepare managed paths before starting any backend command that relies on them. Preparation and execution SHALL remain coordinated so another mutation cannot intervene between them. Fresh bootstrap SHALL record a prepared root only after successful setup.
+The system SHALL detect a changed canonical root and prepare managed paths before starting any backend command or application that relies on them. Preparation and dependent execution or application process creation SHALL remain coordinated so another mutation cannot intervene. Fresh bootstrap SHALL record a prepared root only after successful setup.
 
 #### Scenario: Direct invocation after a directory move
 - **WHEN** a ready root is moved to another supported directory and its portable launcher is invoked directly
@@ -65,6 +65,15 @@ The system SHALL detect a changed canonical root and prepare managed paths befor
 #### Scenario: Central invocation after drive rediscovery
 - **WHEN** central discovery locates the same identity under a new drive letter
 - **THEN** the portable launcher performs relocation preparation before executing the delegated package command
+
+#### Scenario: Direct application launch after a move
+- **WHEN** a moved Store's `pspe.exe` is invoked directly from an unrelated working directory
+- **THEN** owned shims and portable path state are prepared for the new root before application creation
+- **AND** the application keeps the caller's working directory
+
+#### Scenario: Application preparation fails
+- **WHEN** relocation preparation detects corrupt state, an unknown shim, or an escaped managed target
+- **THEN** application execution is blocked with the preparation diagnostic and no alternative target is launched
 
 ### Requirement: Limit repair to owned managed artifacts
 Relocation repair SHALL update or rebuild only supported Portscoop/Scoop-generated shims, managed links, and adapter-controlled path state. Replacements SHALL match the exact previous root. Repair SHALL NOT rewrite unrelated drive references, downloaded manifests, application binaries, arbitrary application configuration, or user files.

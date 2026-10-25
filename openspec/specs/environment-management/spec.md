@@ -75,7 +75,7 @@ The system SHALL remove only the requested host alias on unregistration. If the 
 - **AND** the portable environment remains usable through its own launcher
 
 ### Requirement: Provide central and portable deployment through both CLI names
-The system SHALL provide `portscoop` and `psp` with equivalent behavior in CMD and PowerShell. Setup SHALL support central deployment and independent portable deployment. Central user-PATH integration SHALL occur only when explicitly requested during setup.
+The system SHALL provide `portscoop` and `psp` with equivalent management behavior in CMD and PowerShell, and `pspe` as a separate application execution entry point. Setup SHALL support central deployment and independent portable deployment with all three executables. Central user-PATH integration SHALL occur only when explicitly requested during setup.
 
 #### Scenario: Equivalent entry points
 - **WHEN** the same operation is invoked through `portscoop` and `psp` from CMD or PowerShell
@@ -89,6 +89,15 @@ The system SHALL provide `portscoop` and `psp` with equivalent behavior in CMD a
 #### Scenario: Portable deployment without host setup
 - **WHEN** a portable release is deployed and initialized without central setup
 - **THEN** both local CLI names work without adding directories to host PATH
+
+#### Scenario: Execution entry point is deployed in both modes
+- **WHEN** a compatible release is deployed as a Host or initialized as a Store
+- **THEN** `pspe.exe` is present beside the two management executables and is covered by release verification
+- **AND** direct Store execution needs no Host installation or registration
+
+#### Scenario: Execution artifact is missing or altered
+- **WHEN** a release claiming execution support lacks its recorded `pspe.exe` artifact or its content does not match the release inventory
+- **THEN** deployment reports the incomplete or altered release instead of publishing execution readiness
 
 ### Requirement: List unavailable registrations without losing them
 The system SHALL list all registered environments with their aliases, identities, default status, and availability diagnostics. Unavailable storage SHALL NOT cause a registration to be discarded or a listing to wait indefinitely.
