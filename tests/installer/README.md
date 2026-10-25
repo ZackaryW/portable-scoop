@@ -1,0 +1,49 @@
+# Installer verification
+
+Run the bootstrap contract checks in Windows PowerShell 5.1:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests/installer/bootstrap-tests.ps1
+```
+
+These checks replace network calls inside the test process and supply a minimal
+fixture ZIP whose setup script writes only a temporary receipt. They exercise
+the real entry and download/extraction scripts, including `Invoke-Expression`,
+version selection, option forwarding, checksum failure, existing destinations,
+and ZIP traversal rejection. No real Host PATH writes or Scoop operations run.
+
+`qualify-release.ps1` runs only in the disposable VMware Windows guest. Build a
+real release with `scripts/package.ps1`, then create a bundle ZIP containing:
+
+```text
+get.ps1
+scripts/install.ps1
+host-state.ps1                  # from tests/backend/
+portscoop-windows-amd64.zip     # from dist/release-assets/<version>/
+portscoop-windows-amd64.zip.sha256
+```
+
+Transfer that bundle and the qualifier to the guest and run:
+
+```powershell
+powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File C:\Tests\qualify-release.ps1 -Bundle C:\Tests\installer-bundle.zip -Results C:\Tests\installer-results.json
+```
+
+The qualifier creates a new `C:\Users\Public\PortscoopInstaller-<UUID>` folder,
+redirects download calls to the supplied actual release, and performs real Host
+and Store setup. It checks bare `psp env list`, two identities, direct portable
+execution, central delegation, optional registration/default, and refusal to
+overwrite an existing store. Fresh empty stores return the pinned Scoop backend's
+empty-app warning and exit code 1 for `list`; the test checks that response.
+
+Host registration uses a private LOCALAPPDATA profile. The test temporarily adds
+the new Host folder to guest user PATH and restores the exact previous value in
+`finally`. The read-only Scoop sentinel and user/machine environment hashes must
+match after restoration. Installations and a transcript remain for inspection.
+After the test, use the full Host executable path and set LOCALAPPDATA to that
+test's `host-profile` to inspect its private registrations.
+
+This qualifies the release payload and installer behavior without a compiler in
+the guest. It does **not** qualify the live GitHub endpoint: publication and a
+separate live download smoke test are still required. See
+[Windows evidence](evidence/windows-release.json) for the qualified artifact.

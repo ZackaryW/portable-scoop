@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "qualified_at_utc": "2026-10-25T01:19:22.1193271Z",
+  "status": "passed",
+  "release_version": "0.1.0-dev.8",
+  "release_sha256": "04c89fad82c79b4274c4fadd6c54af855f8dfe31cb3791514c73ef059efa1160",
+  "download_source": "GitHub-shaped requests redirected to the actual locally built release; no live endpoint was exercised",
+  "guest": {
+    "windows": "10.0.26200.0",
+    "powershell": "5.1.26100.6584",
+    "go_required": false,
+    "test_root": "C:\\Users\\Public\\PortscoopInstaller-6c90d21c632a4717b253e01b12cfce59",
+    "checks": [
+      "Host setup, exact user PATH addition, and immediate bare psp env list",
+      "Two independent initialized stores, explicit registration/default, and Store PATH preservation",
+      "Direct Store execution, central default delegation, explicit selection, and both aliases listed",
+      "Existing Store refusal preserves data; TLS settings restored",
+      "Scoop sentinel and user/machine environment unchanged after restoring the test PATH entry"
+    ]
+  },
+  "sources": {
+    "get.ps1": "965a1f2494502a8a249289f60fa2f0203bdaf2c23cde27494021f490ebe561bf",
+    "scripts/install.ps1": "d7cef10fe28dace9e63fb8238d891e06a2df76ea9b2c9409e507082c803c879f",
+    "scripts/package.ps1": "7f62a519a132dda4e5a29693ccad4b30f7d3b0dec179f2ac7ced6b1af8a3ea0e",
+    "tests/installer/qualify-release.ps1": "eef59688bf9ea213bdeb75add5c15f3806ac151369eca7ac58c3738405268c1f"
+  },
+  "physical_host": {
+    "tracked_files": 223,
+    "changed_files": [],
+    "user_environment_unchanged": true,
+    "machine_environment_unchanged": true
+  },
+  "limitations": [
+    "GitHub source and release publication are pending; the public one-liner is not live.",
+    "The hosted Actions workflow has not yet run.",
+    "Fresh empty Store list retains the pinned Scoop warning and exit code 1."
+  ],
+  "source_hash_encoding": "UTF-8 with CRLF normalized to LF, matching Git text normalization"
+}
