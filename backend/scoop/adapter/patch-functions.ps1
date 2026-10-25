@@ -77,11 +77,14 @@ function Invoke-HookScript {
             foreach ($item in @($entry.Value.manifest.persist)) {
                 $pair = @($item); $source = [string]$pair[0]; $saved = $source
                 if ($pair.Count -gt 1) { $saved = [string]$pair[1] }
-                if ($source.Replace('\','/') -ieq $action.path -and $saved.Replace('\','/') -ieq $action.persist_path) { $mapped = $true }
+                $source=$source.Replace('\','/'); $saved=$saved.Replace('\','/')
+                if ($action.path -ieq $source -or $action.path.StartsWith($source+'/',[StringComparison]::OrdinalIgnoreCase)) {
+                    if (($saved+$action.path.Substring($source.Length)) -ieq $action.persist_path) { $mapped = $true }
+                }
             }
             if (-not $mapped) { throw 'Action persistence mapping differs from frozen manifest' }
         }
-        Invoke-PortscoopAction -Action $action -App $app -Version $Manifest.version -Directory $dir -PersistDirectory $persist_dir
+        Invoke-PortscoopAction -Action $action -App $app -Version $Manifest.version -Directory $dir -PersistDirectory $persist_dir -PersistMappings @($entry.Value.manifest.persist)
     }
 }
 function Invoke-ScoopDownload {

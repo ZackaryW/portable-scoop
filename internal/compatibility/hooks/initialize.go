@@ -40,7 +40,10 @@ func initialize(c Context, n node) (operation, bool, error) {
 	}
 	target, kind, err := newItem(c, n.body[0])
 	if err != nil {
-		return operation{}, true, err
+		return operation{}, false, nil
+	}
+	if kind != "file" {
+		return operation{}, false, nil
 	}
 	saved := persistencePath(c, target)
 	if kind != "file" || cs[0].kind == "container" || !strings.EqualFold(p, saved) || saved == "" {

@@ -55,12 +55,17 @@ func persisted(c Context, p string) bool {
 	return persistencePath(c, p) != ""
 }
 func persistencePath(c Context, p string) string {
+	result := ""
 	for _, pair := range c.Persist {
-		if strings.EqualFold(strings.ReplaceAll(pair[0], `\`, "/"), p) && safeRelative(pair[1]) {
-			return strings.ReplaceAll(pair[1], `\`, "/")
+		source := strings.ReplaceAll(pair[0], `\`, "/")
+		if (strings.EqualFold(source, p) || strings.HasPrefix(strings.ToLower(p), strings.ToLower(source)+"/")) && safeRelative(pair[1]) {
+			if result != "" {
+				return ""
+			}
+			result = strings.ReplaceAll(pair[1], `\`, "/") + p[len(source):]
 		}
 	}
-	return ""
+	return result
 }
 func persistenceOverlap(c Context, p string) bool {
 	for _, pair := range c.Persist {

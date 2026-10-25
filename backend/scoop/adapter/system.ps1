@@ -102,8 +102,8 @@ function Assert-PortscoopRelativePath {
     }
 }
 function Invoke-PortscoopAction {
-    param([psobject]$Action, [string]$App, [string]$Version, [string]$Directory, [string]$PersistDirectory)
-    if ($Action.kind -cnotin @('ensure-persisted-file','rename-package-file') -or $Action.phase -cnotin @('pre_install','post_install')) { throw 'Unsupported portable action' }
+    param([psobject]$Action, [string]$App, [string]$Version, [string]$Directory, [string]$PersistDirectory, [object[]]$PersistMappings)
+    if ($Action.kind -cnotin @('ensure-persisted-file','rename-package-file','copy-package-file','ensure-directory','write-default-file') -or $Action.phase -cnotin @('pre_install','post_install')) { throw 'Unsupported portable action' }
     foreach ($component in @($App,$Version)) {
         if ($component -notmatch '\A[A-Za-z0-9][A-Za-z0-9._+-]*\z') { throw 'Invalid portable action identity' }
         Assert-PortscoopRelativePath $component
@@ -124,6 +124,15 @@ function Invoke-PortscoopAction {
     }
     if (-not ([IO.Path]::GetFullPath($Directory)).Equals($expectedDir,[StringComparison]::OrdinalIgnoreCase) -or -not ([IO.Path]::GetFullPath($PersistDirectory)).Equals($expectedPersist,[StringComparison]::OrdinalIgnoreCase)) { throw 'Portable action layout differs from Store' }
     $target=Join-Path $physical $Action.path
+    if ($Action.kind -ceq 'ensure-persisted-file' -and $Action.phase -ceq 'post_install' -and $PersistMappings.Count) {
+        $initializer=[pscustomobject]@{phase=$Action.phase;kind='write-default-file';path=$Action.path;persist_path=$Action.persist_path;guard='package-missing';content='';encoding='utf8'}
+        Invoke-PortscoopLocalAction $initializer $root $physical $expectedPersist $PersistMappings
+        return
+    }
+    if ($Action.kind -cin @('copy-package-file','ensure-directory','write-default-file')) {
+        Invoke-PortscoopLocalAction $Action $root $physical $expectedPersist $PersistMappings
+        return
+    }
     if ($Action.kind -ceq 'rename-package-file') {
         Assert-PortscoopRelativePath $Action.source
         $source=Join-Path $physical $Action.source
@@ -152,4 +161,84 @@ function Invoke-PortscoopAction {
         $stream=[IO.File]::Open($target,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
         $stream.Dispose()
     }
+}
+
+function Invoke-PortscoopLocalAction {
+    param($Action,[string]$Root,[string]$Physical,[string]$Persist,[object[]]$Mappings)
+    $target=Join-Path $Physical $Action.path
+    $saved=$null
+    if ($Action.persist_path) {
+        Assert-PortscoopRelativePath $Action.persist_path
+        $saved=Join-Path $Persist $Action.persist_path
+        Assert-PortscoopActionPath $Root $saved
+    }
+    if ($Action.phase -ceq 'post_install' -and $saved) {
+        $verified=$false
+        foreach ($item in @($Mappings)) {
+            $pair=@($item);$source=[string]$pair[0];$destination=$source
+            if ($pair.Count -gt 1) {$destination=[string]$pair[1]}
+            $source=$source.Replace('\','/');$destination=$destination.Replace('\','/')
+            if ($Action.path -ine $source -and -not $Action.path.StartsWith($source+'/',[StringComparison]::OrdinalIgnoreCase)) {continue}
+            if (($destination+$Action.path.Substring($source.Length)) -ine $Action.persist_path) {continue}
+            Assert-PortscoopRelativePath $source
+            Assert-PortscoopRelativePath $destination
+            $linkPath=Join-Path $Physical $source
+            $savedRoot=Join-Path $Persist $destination
+            Assert-PortscoopActionPath $Root ([IO.Path]::GetDirectoryName($linkPath))
+            Assert-PortscoopActionPath $Root $savedRoot
+            $link=Get-Item -LiteralPath $linkPath -Force
+            if ($link.PSIsContainer) {
+                $targets=@($link.Target)
+                if ($link.LinkType -ne 'Junction' -or $targets.Count -ne 1 -or -not ([IO.Path]::GetFullPath($targets[0])).Equals($savedRoot,[StringComparison]::OrdinalIgnoreCase)) {throw 'Unverified persistence junction'}
+            } elseif ($Action.path -ine $source -or $link.LinkType -ne 'HardLink' -or $savedRoot -notin @($link.Target)) {throw 'Unverified persistence file'}
+            if ($verified) {throw 'Ambiguous persistence mapping'}
+            $verified=$true
+        }
+        if (-not $verified) {throw 'Missing post-install persistence mapping'}
+        $target=$saved
+    }
+    Assert-PortscoopActionPath $Root $target
+    if ($Action.guard -and $Action.guard -cnotin @('package-missing','persist-missing')) {throw 'Unsupported local action guard'}
+    if ($Action.guard -ceq 'package-missing' -and (Test-Path -LiteralPath $target)) {return}
+    if ($saved -and (Test-Path -LiteralPath $saved)) {
+        if ($Action.kind -ceq 'ensure-directory' -and -not [IO.Directory]::Exists($saved)) {throw 'Persisted directory is a file'}
+        if ($Action.kind -cne 'ensure-directory' -and -not [IO.File]::Exists($saved)) {throw 'Persisted file is a directory'}
+        return
+    }
+    if ($Action.kind -ceq 'ensure-directory') {
+        if ([IO.File]::Exists($target)) {throw 'Directory target is a file'}
+        [IO.Directory]::CreateDirectory($target) | Out-Null
+        return
+    }
+    if ([IO.Directory]::Exists($target)) {throw 'File target is a directory'}
+    $source=$null
+    if ($Action.kind -ceq 'copy-package-file') {
+        Assert-PortscoopRelativePath $Action.source
+        $source=Join-Path $Physical $Action.source
+        Assert-PortscoopActionPath $Root $source
+        if (-not [IO.File]::Exists($source)) {throw 'Packaged default source is missing'}
+    }
+    $parent=[IO.Path]::GetDirectoryName($target)
+    [IO.Directory]::CreateDirectory($parent) | Out-Null
+    $temporary=Join-Path $parent ('.portscoop-default-'+[guid]::NewGuid().ToString('N'))
+    try {
+        $stream=[IO.File]::Open($temporary,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
+        try {
+            if ($source) {
+                $input=[IO.File]::OpenRead($source)
+                try {$input.CopyTo($stream)} finally {$input.Dispose()}
+            } else {
+                switch -CaseSensitive ($Action.encoding) {
+                    'ascii' {$encoding=[Text.Encoding]::ASCII}
+                    'utf8' {$encoding=New-Object Text.UTF8Encoding($false)}
+                    'unicode' {$encoding=[Text.Encoding]::Unicode}
+                    default {throw 'Unsupported literal encoding'}
+                }
+                $preamble=$encoding.GetPreamble();$stream.Write($preamble,0,$preamble.Length)
+                $bytes=$encoding.GetBytes([string]$Action.content);$stream.Write($bytes,0,$bytes.Length)
+            }
+        } finally {$stream.Dispose()}
+        # Replace the directory entry, not bytes through an existing hard link.
+        if ([IO.File]::Exists($target)) {[IO.File]::Replace($temporary,$target,[NullString]::Value)} else {[IO.File]::Move($temporary,$target)}
+    } finally {if ([IO.File]::Exists($temporary)) {[IO.File]::Delete($temporary)}}
 }

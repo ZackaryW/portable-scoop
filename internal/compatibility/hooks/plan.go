@@ -16,6 +16,8 @@ type Action struct {
 	Source      string `json:"source,omitempty"`
 	Content     string `json:"content,omitempty"`
 	PersistPath string `json:"persist_path,omitempty"`
+	Encoding    string `json:"encoding,omitempty"`
+	Guard       string `json:"guard,omitempty"`
 }
 type Decision struct {
 	Phase       string `json:"phase"`
@@ -36,7 +38,7 @@ type operation struct {
 }
 type recognizer func(Context, node) (operation, bool, error)
 
-var operations = []recognizer{rename, initialize, optionalImport}
+var operations = []recognizer{rename, initialize, optionalImport, localCopy, directory, literalDefault}
 
 func Compile(c Context, phase, source string) (Plan, error) {
 	return compile(c, phase, source, operations)

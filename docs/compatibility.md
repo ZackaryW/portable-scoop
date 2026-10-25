@@ -15,7 +15,7 @@ Architecture selection precedes effect inspection. All branch objects must be st
 | `persist` | Store-owned persistence paths or source/destination pairs. |
 | `env_add_path`, `env_set` | Checked paths and child-process environment declarations; reserved host/control variables remain blocked. |
 | `depends` | Store-local dependency resolution. |
-| `pre_install`, `post_install` | Compose checked package rename, persisted-file initialization, and selectively omitted optional AppData imports. Complete construct accounting and ordered frozen actions; see [hook operations](hook-operations.md). |
+| `pre_install`, `post_install` | Compose checked package rename/copy, directory creation, literal and persisted-file initialization, and selectively omitted optional AppData imports. Complete construct accounting and ordered frozen actions; see [hook operations](hook-operations.md). |
 | `pre_uninstall`, `post_uninstall`, `installer`, `uninstaller`, `innosetup`, `cookie`, `psmodule` | Explicitly unsupported until a portable implementation exists. Module integration is no longer silently ignored. |
 | `description`, `homepage`, `license`, `notes`, `suggest` | Declarative metadata retained without script evaluation. |
 | `checkver`, `autoupdate`, `$schema`, `_comment`, `##` | Skipped as installation-irrelevant metadata; not evaluated. |

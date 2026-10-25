@@ -104,6 +104,52 @@ New-Item -ItemType Junction -Path $dir -Target $outside | Out-Null
 Reject { Invoke-PortscoopAction $action $app '1.0' $dir $persist_dir }
 [IO.Directory]::Delete($dir)
 $dir=$physical
+
+# Generic packaged defaults and literal initialization in both layouts.
+$directory=[pscustomobject]@{phase='pre_install';kind='ensure-directory';path='cache/nested'}
+Invoke-PortscoopAction $directory $app '1.0' $physical $persist_dir
+Assert ([IO.Directory]::Exists("$physical\cache\nested")) 'Local directory not created'
+Invoke-PortscoopAction $directory $app '1.0' $physical $persist_dir
+$local=[pscustomobject]@{phase='pre_install';kind='copy-package-file';source='defaults.ini';path='profile/options.ini';persist_path='saved/options.ini';guard='persist-missing'}
+[IO.File]::WriteAllText("$physical\defaults.ini",'packaged default')
+Invoke-PortscoopAction $local $app '1.0' $physical $persist_dir
+Assert ([IO.File]::ReadAllText("$physical\profile\options.ini") -ceq 'packaged default') 'Packaged default not copied'
+New-Item -ItemType Directory -Path "$persist_dir\saved" -Force | Out-Null
+[IO.File]::WriteAllText("$persist_dir\saved\options.ini",'saved default')
+$local.source='missing.ini'
+Invoke-PortscoopAction $local $app '1.0' $physical $persist_dir
+Assert ([IO.File]::ReadAllText("$persist_dir\saved\options.ini") -ceq 'saved default') 'Saved default overwritten'
+$literal=[pscustomobject]@{phase='pre_install';kind='write-default-file';path='literal.ini';content="hello`r`n";encoding='ascii'}
+Invoke-PortscoopAction $literal $app '1.0' $physical $persist_dir
+Assert ([IO.File]::ReadAllText("$physical\literal.ini") -ceq "hello`r`n") 'Literal bytes differ'
+# Replacing a package entry must not truncate other names for the same file.
+[IO.File]::WriteAllText("$outside\linked.ini",'untouched')
+New-Item -ItemType HardLink -Path "$physical\linked.ini" -Target "$outside\linked.ini" | Out-Null
+$literal.path='linked.ini'
+Invoke-PortscoopAction $literal $app '1.0' $physical $persist_dir
+Assert ([IO.File]::ReadAllText("$outside\linked.ini") -ceq 'untouched') 'Literal followed a hard link'
+
+# A post-install default inside a declared persisted directory uses its checked
+# physical saved location, never an arbitrary junction.
+[IO.File]::Delete("$physical\profile\options.ini")
+[IO.Directory]::Delete("$physical\profile")
+New-Item -ItemType Junction -Path "$physical\profile" -Target "$persist_dir\saved" | Out-Null
+$current=Join-Path $Root 'scoop\apps\fixture\current'
+New-Item -ItemType Junction -Path $current -Target $physical | Out-Null
+$literal.phase='post_install';$literal.path='profile/new.ini'
+$literal | Add-Member persist_path 'saved/new.ini'
+$mapping=@(,@('profile','saved'))
+Invoke-PortscoopAction $literal $app '1.0' $current $persist_dir $mapping
+Assert ([IO.File]::ReadAllText("$persist_dir\saved\new.ini") -ceq "hello`r`n") 'Post-install default not stored'
+$literal.content='do not overwrite'
+Invoke-PortscoopAction $literal $app '1.0' $current $persist_dir $mapping
+Assert ([IO.File]::ReadAllText("$persist_dir\saved\new.ini") -ceq "hello`r`n") 'Post-install default overwritten'
+[IO.Directory]::Delete("$physical\profile")
+New-Item -ItemType Junction -Path "$physical\profile" -Target $outside | Out-Null
+Reject { Invoke-PortscoopAction $literal $app '1.0' $current $persist_dir $mapping }
+[IO.Directory]::Delete("$physical\profile")
+[IO.Directory]::Delete($current)
+
 if ($Backend) {
     # Load only the pinned backend's hash functions, without its module startup
     # or any package hooks. The input is a prepared, verified build artifact.
