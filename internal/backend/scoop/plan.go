@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -150,6 +151,8 @@ func installedNames(paths environment.Paths) ([]string, error) {
 	return names, nil
 }
 
+var reinstallBackupPattern = regexp.MustCompile(`^_([a-zA-Z0-9][a-zA-Z0-9._+-]*)\.old(?:\([1-9][0-9]*\))?$`)
+
 // Validate every saved version that uninstall/update/reset/cleanup may read.
 // Old versions can contain uninstall metadata even when current is safe.
 func validateSaved(paths environment.Paths, names []string) error {
@@ -167,7 +170,11 @@ func validateSaved(paths environment.Paths, names []string) error {
 			if entry.Name() == "current" {
 				continue
 			}
-			if !entry.IsDir() || !versionPattern.MatchString(entry.Name()) || !metadata.RelativePath(entry.Name()) {
+			// Forced reinstall preserves the previous physical version using
+			// Scoop's _version.old or _version.old(n) format. Validate its saved
+			// metadata too; skipping backups would bypass uninstall preflight.
+			backup := reinstallBackupPattern.FindStringSubmatch(entry.Name())
+			if !entry.IsDir() || (!versionPattern.MatchString(entry.Name()) && backup == nil) || !metadata.RelativePath(entry.Name()) {
 				return fmt.Errorf("unsupported installed version for %s", name)
 			}
 			data, err := containedFile(paths.Root, filepath.Join(directory, entry.Name(), "scoop-manifest.json"))
@@ -178,6 +185,12 @@ func validateSaved(paths environment.Paths, names []string) error {
 				return fmt.Errorf("saved manifest %s/%s: %w", name, entry.Name(), err)
 			}
 			manifest, err := DecodeManifest(data)
+			if err == nil && backup != nil {
+				var original string
+				if json.Unmarshal(manifest["version"], &original) != nil || original != backup[1] {
+					return fmt.Errorf("reinstall backup version differs from saved manifest for %s", name)
+				}
+			}
 			if err == nil {
 				_, err = ValidateManifest(manifest)
 			}
