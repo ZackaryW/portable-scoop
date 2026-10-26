@@ -6,17 +6,6 @@ Architecture selection precedes effect inspection. All branch objects must be st
 
 ## Current field behavior
 
-Package commands show a short compatibility summary, grouping repeated hook
-actions and keeping skipped optional host-data imports visible. To see each
-operation, its source line and reason, add `--verbose`:
-
-```powershell
-psp install potplayer --verbose
-```
-
-The same option works with `update`, `uninstall`, `reset` and `cleanup`.
-It controls Portscoop diagnostics and is not passed to the package engine.
-
 | Fields | Behavior |
 | --- | --- |
 | `version`, `url`, `hash` | Fixed versions; checked HTTP(S) ZIP/nupkg, 7z, tar/gzip and inert EXE download plans with filename fragments and query handling; SHA-256, SHA-1, SHA-512, or MD5 with exact digest lengths. Release/backend integrity remains SHA-256. |
