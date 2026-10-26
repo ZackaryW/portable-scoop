@@ -9,6 +9,7 @@ import (
 
 	"portscoop/internal/environment"
 	"portscoop/internal/runtimeinstall"
+	"portscoop/internal/testutil"
 	"portscoop/internal/toolbundle"
 )
 
@@ -146,7 +147,7 @@ func TestExistingManagedToolsRollbackAndRelocation(t *testing.T) {
 			}
 			if mode == "relocated" {
 				previous := tx.Target.Root
-				destination := filepath.Join(t.TempDir(), "moved store")
+				destination := filepath.Join(testutil.TempDir(t), "moved store")
 				rel, err := filepath.Rel(previous, tx.Directory)
 				if err != nil {
 					t.Fatal(err)

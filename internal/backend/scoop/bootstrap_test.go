@@ -11,6 +11,7 @@ import (
 	"portscoop/internal/environment"
 	"portscoop/internal/runner"
 	"portscoop/internal/runtimeinstall"
+	"portscoop/internal/testutil"
 )
 
 func fixtureMain(_ context.Context, paths environment.Paths) error {
@@ -148,12 +149,15 @@ func TestBootstrapTwoStoresAndRelocation(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(b.Paths.Buckets, "main")); !os.IsNotExist(err) {
 		t.Fatal("other Store modified")
 	}
-	moved := filepath.Join(t.TempDir(), "relocated")
+	moved := filepath.Join(testutil.TempDir(t), "relocated")
 	previous := a.Paths.Root
 	if err := os.Rename(previous, moved); err != nil {
 		t.Fatal(err)
 	}
-	paths, _ := environment.PathsAt(moved)
+	paths, err := environment.PathsAt(moved)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := bootstrap.ensureMain(context.Background(), paths); err != nil {
 		t.Fatal(err)
 	}
