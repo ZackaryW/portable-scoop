@@ -34,9 +34,11 @@ $names=@(Invoke-ScoopDownload fixture 1 $manifest main 64bit $dir)
 Assert ($names.Count -eq 1 -and $names[0] -ceq 'retained.exe') 'Frozen name not returned'
 Assert ([IO.File]::Exists("$dir\retained.exe")) 'Inert payload not retained'
 Assert (-not [IO.File]::Exists("$dir\wrong.exe")) 'Query selected filename'
-Reject { Invoke-ScoopDownload fixture 1 $manifest main 64bit $dir $true $false }
+$again=@(Invoke-ScoopDownload fixture 1 $manifest main 64bit $dir $true $false)
+Assert ($again.Count -eq 1 -and $again[0] -ceq 'retained.exe') 'Internal update flag blocked verified reinstall'
 $download.hash='0'*64
 Reject { Invoke-ScoopDownload fixture 1 $manifest main 64bit $dir }
+Reject { Invoke-ScoopDownload fixture 1 $manifest main 64bit $dir $true $false }
 $download.hash=$Digest
 Reject { Invoke-ScoopDownload fixture 1 $manifest main 64bit (Join-Path $Root 'elsewhere') }
 $download.name='../escape.exe'

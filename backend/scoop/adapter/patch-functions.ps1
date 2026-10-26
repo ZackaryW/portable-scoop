@@ -101,7 +101,8 @@ function Invoke-HookScript {
 }
 function Invoke-ScoopDownload {
     param($app, $version, $manifest, $bucket, $architecture, $dir, $use_cache = $true, $check_hash = $true)
-    if (-not $check_hash) { throw 'Download hash verification cannot be disabled' }
+    # Scoop's update path sets this flag false after checking its cached copy.
+    # Always check the frozen digest again here; never honor a skip request.
     $entry = $portscoopRequest.manifests.PSObject.Properties | Where-Object { $_.Name -ieq $app } | Select-Object -First 1
     if (-not $entry -or $entry.Value.manifest.version -cne $version -or
         (@($entry.Value.manifest.url) -join "`n") -cne (@($manifest.url) -join "`n")) { throw 'Download does not match frozen manifest' }
