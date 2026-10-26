@@ -102,6 +102,9 @@ func addDelegationCommands(root *cobra.Command, version string, options Options)
 			}
 			return nil
 		}}
+		if name == "install" || name == "uninstall" || name == "update" || name == "reset" || name == "cleanup" {
+			command.Flags().Bool("verbose", false, "Show individual portable compatibility decisions")
+		}
 		root.AddCommand(command)
 	}
 }

@@ -23,9 +23,10 @@ const (
 )
 
 type Decision struct {
-	Field       string      `json:"field"`
-	Disposition Disposition `json:"disposition"`
-	Reason      string      `json:"reason,omitempty"`
+	Field       string           `json:"field"`
+	Disposition Disposition      `json:"disposition"`
+	Reason      string           `json:"reason,omitempty"`
+	Operations  []hooks.Decision `json:"operations,omitempty"`
 }
 
 // Action has no command or script payload. Paths are package-relative.
@@ -67,11 +68,11 @@ var fields = map[string]handler{
 func Compile(input Manifest) (Plan, error) {
 	m, err := architecture(input)
 	if err != nil {
-		return Plan{Decisions: []Decision{{"architecture", Reject, err.Error()}}}, err
+		return Plan{Decisions: []Decision{{Field: "architecture", Disposition: Reject, Reason: err.Error()}}}, err
 	}
 	p := Plan{Manifest: Manifest{}}
 	if _, ok := input["architecture"]; ok {
-		p.Decisions = append(p.Decisions, Decision{"architecture", Use, "selected Windows x64"})
+		p.Decisions = append(p.Decisions, Decision{Field: "architecture", Disposition: Use, Reason: "selected Windows x64"})
 	}
 	keys := make([]string, 0, len(m)+3)
 	for key := range m {
@@ -95,7 +96,7 @@ func Compile(input Manifest) (Plan, error) {
 		} else {
 			r, err = h(m, m[key])
 		}
-		d := Decision{Field: key, Disposition: r.disposition, Reason: r.reason}
+		d := Decision{Field: key, Disposition: r.disposition, Reason: r.reason, Operations: r.hookPlan.Decisions}
 		if err != nil {
 			d.Disposition, d.Reason = Reject, err.Error()
 			failures = append(failures, fmt.Sprintf("%s: %s", key, err))
@@ -112,7 +113,7 @@ func Compile(input Manifest) (Plan, error) {
 	if len(failures) == 0 {
 		if err := hooks.CheckDependencies(hookPlans...); err != nil {
 			failures = append(failures, err.Error())
-			p.Decisions = append(p.Decisions, Decision{"pre_install/post_install", Reject, err.Error()})
+			p.Decisions = append(p.Decisions, Decision{Field: "pre_install/post_install", Disposition: Reject, Reason: err.Error()})
 		}
 	}
 	// Field order is diagnostic-only; actions always follow lifecycle order.
@@ -122,7 +123,7 @@ func Compile(input Manifest) (Plan, error) {
 	if len(failures) == 0 {
 		merged, err := mergeBindings(bindings)
 		if err != nil {
-			p.Decisions = append(p.Decisions, Decision{"bin", Reject, err.Error()})
+			p.Decisions = append(p.Decisions, Decision{Field: "bin", Disposition: Reject, Reason: err.Error()})
 			failures = append(failures, "bin: "+err.Error())
 		} else if len(merged) > 0 {
 			p.Manifest["bin"], _ = json.Marshal(merged)
@@ -132,7 +133,7 @@ func Compile(input Manifest) (Plan, error) {
 		var err error
 		p.Downloads, err = compileDownloads(p.Manifest)
 		if err != nil {
-			p.Decisions = append(p.Decisions, Decision{"url", Reject, err.Error()})
+			p.Decisions = append(p.Decisions, Decision{Field: "url", Disposition: Reject, Reason: err.Error()})
 			failures = append(failures, "url: "+err.Error())
 		}
 	}
