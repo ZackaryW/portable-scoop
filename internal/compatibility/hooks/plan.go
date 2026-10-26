@@ -24,11 +24,12 @@ type Action struct {
 	Force       bool     `json:"force,omitempty"`
 }
 type Decision struct {
-	Phase       string `json:"phase"`
-	Position    int    `json:"position"`
-	Line        int    `json:"line"`
-	Disposition string `json:"disposition"`
-	Reason      string `json:"reason"`
+	Phase         string `json:"phase"`
+	Position      int    `json:"position"`
+	Line          int    `json:"line"`
+	Disposition   string `json:"disposition"`
+	Reason        string `json:"reason"`
+	Informational bool   `json:"informational,omitempty"`
 }
 type Plan struct {
 	Actions                      []Action
@@ -52,7 +53,7 @@ func compile(c Context, phase, source string, registry []recognizer) (Plan, erro
 	var plan Plan
 	fail := func(pos, line int, reason string) (Plan, error) {
 		plan.Actions = nil
-		plan.Decisions = append(plan.Decisions, Decision{phase, pos, line, "reject", reason})
+		plan.Decisions = append(plan.Decisions, Decision{Phase: phase, Position: pos, Line: line, Disposition: "reject", Reason: reason})
 		return plan, fmt.Errorf("%s operation %d line %d: %s", phase, pos, line, reason)
 	}
 	if phase != "pre_install" && phase != "post_install" {
@@ -91,7 +92,7 @@ func compile(c Context, phase, source string, registry []recognizer) (Plan, erro
 					return fail(i+1, n.line, "expanded actions exceed 4096")
 				}
 			}
-			plan.Decisions = append(plan.Decisions, Decision{phase, i + 1, n.line, disposition, op.reason})
+			plan.Decisions = append(plan.Decisions, Decision{Phase: phase, Position: i + 1, Line: n.line, Disposition: disposition, Reason: op.reason, Informational: op.action == nil && len(op.skippedWrites) == 0})
 			accepted = append(accepted, op)
 			break
 		}

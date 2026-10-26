@@ -24,6 +24,7 @@ type Operation struct {
 	Arguments []string
 	Packages  []string
 	Preflight bool
+	Verbose   bool
 }
 
 // PackageName accepts a name or bucket/name, never a path, URL, option, or
@@ -57,7 +58,13 @@ func Classify(args []string) (Operation, error) {
 	switch op.Name {
 	case "install", "uninstall", "update", "reset", "cleanup":
 		op.Preflight = true
+		op.Arguments = []string{op.Name}
 		for _, arg := range rest {
+			if arg == "--verbose" {
+				op.Verbose = true
+				continue
+			}
+			op.Arguments = append(op.Arguments, arg)
 			if strings.HasPrefix(arg, "-") {
 				allowed := (arg == "--no-cache" && (op.Name == "install" || op.Name == "update")) || (arg == "--force" && op.Name == "update")
 				if !allowed {

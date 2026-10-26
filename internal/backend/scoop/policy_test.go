@@ -33,6 +33,20 @@ func TestCommandPolicy(t *testing.T) {
 	}
 }
 
+func TestVerboseOptionIsPresentationOnly(t *testing.T) {
+	for _, name := range []string{"install", "update", "uninstall", "reset", "cleanup"} {
+		op, err := Classify([]string{name, "--verbose", "tool"})
+		if err != nil || !op.Verbose || fmt.Sprint(op.Arguments) != "["+name+" tool]" || fmt.Sprint(op.Packages) != "[tool]" {
+			t.Fatalf("%s: %+v %v", name, op, err)
+		}
+	}
+	for _, args := range [][]string{{"install", "tool", "--verbose=true"}, {"install", "tool", "--verbose", "--global"}, {"list", "--verbose"}, {"install", "--verbose"}} {
+		if _, err := Classify(args); err == nil {
+			t.Fatalf("accepted invalid options %v", args)
+		}
+	}
+}
+
 func TestManifestSubset(t *testing.T) {
 	good := fixtureManifest(t, map[string]any{"env_set": map[string]string{"TOOL_HOME": "$dir", "TOOL_DATA": "$persist_dir/data", "TOOL_FLAG": "1"}, "env_add_path": []string{"tools"}, "persist": []any{"data", []string{"settings", "configuration"}}, "shortcuts": [][]string{{"tools/tool.cmd", "Tool Shortcut"}}})
 	manifest, err := DecodeManifest(good)

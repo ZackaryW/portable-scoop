@@ -75,6 +75,48 @@ func TestCentralSelectorIsRemovedBeforeDelegation(t *testing.T) {
 	}
 }
 
+func TestVerbosePreservedAcrossLocalAndHostDispatch(t *testing.T) {
+	root := testutil.NewRoot(t, "work")
+	if err := os.WriteFile(filepath.Join(root.Path, "portscoop.exe"), []byte("fixture"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	store := registry.Store{Path: filepath.Join(t.TempDir(), "registry.json")}
+	if err := (registry.Manager{Store: store}).Register(context.Background(), root.Path, "work"); err != nil {
+		t.Fatal(err)
+	}
+	process := &recordingLauncher{identity: root.Identity.ID}
+	cmd := NewWithOptions("test", Options{RegistryPath: store.Path, ExecutablePath: filepath.Join(t.TempDir(), "portscoop.exe"), Volumes: testutil.Volumes{}, Runner: process})
+	cmd.SetArgs([]string{"--env", "work", "install", "tool", "--verbose"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if len(process.calls) != 2 || fmt.Sprint(process.calls[1].Arguments[4:]) != "[install tool --verbose]" {
+		t.Fatal("verbose lost during Host forwarding")
+	}
+	for _, delegated := range []bool{false, true} {
+		backend := &testutil.Backend{}
+		cmd = NewWithOptions("test", Options{ExecutablePath: filepath.Join(root.Path, "portscoop.exe"), Backend: backend})
+		args := []string{"install", "tool", "--verbose"}
+		if delegated {
+			args = append([]string{delegation.ExecuteCommand, root.Identity.ID, "1", "--"}, args...)
+		}
+		cmd.SetArgs(args)
+		if err := cmd.Execute(); err != nil {
+			t.Fatal(err)
+		}
+		if calls := backend.Calls(); len(calls) != 1 || fmt.Sprint(calls[0].Arguments) != "[install tool --verbose]" {
+			t.Fatal("verbose lost before Store formatting")
+		}
+	}
+	var help bytes.Buffer
+	cmd = NewWithOptions("test", Options{})
+	cmd.SetOut(&help)
+	cmd.SetArgs([]string{"install", "--help"})
+	if err := cmd.Execute(); err != nil || !strings.Contains(help.String(), "--verbose") {
+		t.Fatal("verbose missing from package help")
+	}
+}
+
 func TestInternalEndpointExecutesLocallyAndCannotRediscover(t *testing.T) {
 	root := testutil.NewRoot(t, "work")
 	backend := &testutil.Backend{}
