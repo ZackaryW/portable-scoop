@@ -12,7 +12,7 @@ import (
 
 // Assignment happens while the primary thread is suspended: no user code can
 // spawn an uncontained descendant between CreateProcess and job assignment.
-func startContained(process *exec.Cmd) (func(), error) {
+func startContained(process *exec.Cmd, memoryLimit uint64) (func(), error) {
 	job, err := windows.CreateJobObject(nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create process job: %w", err)
@@ -21,6 +21,14 @@ func startContained(process *exec.Cmd) (func(), error) {
 	closeJob := func() { once.Do(func() { _ = windows.CloseHandle(job) }) }
 	limits := windows.JOBOBJECT_EXTENDED_LIMIT_INFORMATION{}
 	limits.BasicLimitInformation.LimitFlags = windows.JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+	if memoryLimit != 0 {
+		if uint64(uintptr(memoryLimit)) != memoryLimit {
+			closeJob()
+			return nil, fmt.Errorf("process memory limit is out of range")
+		}
+		limits.BasicLimitInformation.LimitFlags |= windows.JOB_OBJECT_LIMIT_JOB_MEMORY
+		limits.JobMemoryLimit = uintptr(memoryLimit)
+	}
 	if _, err := windows.SetInformationJobObject(job, windows.JobObjectExtendedLimitInformation, uintptr(unsafe.Pointer(&limits)), uint32(unsafe.Sizeof(limits))); err != nil {
 		closeJob()
 		return nil, fmt.Errorf("configure process job: %w", err)

@@ -110,7 +110,19 @@ func extractRequest(ctx context.Context, paths environment.Paths, id, requestPat
 		if d.Format == "file" {
 			continue
 		}
-		if err = archive.Extract(ctx, paths.Root, archive.Request{Source: source, Destination: stage, Format: d.Format, ExtractDir: d.ExtractDir, ExtractTo: d.ExtractTo}); err != nil {
+		resolveNSIS := func() (archive.NSISReader, error) {
+			helper, err := Helper(paths, "7zip")
+			if err != nil {
+				return nil, err
+			}
+			// Fixed DLL directory and a minimal process-local environment avoid
+			// consulting host tools or user extraction configuration.
+			return archive.NativeNSIS{Executable: helper, Environment: []string{
+				"SystemRoot=" + os.Getenv("SystemRoot"), "PATH=" + filepath.Dir(helper),
+				"TEMP=" + paths.Temp, "TMP=" + paths.Temp,
+			}}, nil
+		}
+		if err = archive.Extract(ctx, paths.Root, archive.Request{Source: source, Destination: stage, Format: d.Format, ExtractDir: d.ExtractDir, ExtractTo: d.ExtractTo, NSIS: resolveNSIS}); err != nil {
 			return fmt.Errorf("extract %s: %w", d.Name, err)
 		}
 	}

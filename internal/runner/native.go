@@ -17,7 +17,7 @@ func (Native) Run(ctx context.Context, command Command) (int, error) {
 	process := exec.CommandContext(ctx, command.Executable, command.Arguments...)
 	process.Env, process.Dir = command.Environment, command.Directory
 	process.Stdin, process.Stdout, process.Stderr = command.Streams.In, command.Streams.Out, command.Streams.Err
-	cleanup, err := startContained(process)
+	cleanup, err := startContained(process, command.MemoryLimit)
 	if err != nil {
 		if ctx.Err() != nil {
 			return 0, ctx.Err()

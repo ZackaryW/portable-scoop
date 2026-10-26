@@ -36,5 +36,18 @@ using their private Git before becoming ready. `psp env bootstrap` prepares an
 absent Main in an existing compatible Store and reports tool versions. It keeps
 an existing official Main checkout and reports conflicting sources.
 
-NSIS package extraction still requires the extraction integration; the helper
-bundle alone does not broaden supported package formats.
+Archive-hinted NSIS payloads use the private 7-Zip reader; installers are never
+run. ZIP, 7z, tar and gzip retain their Go readers. An ordinary EXE download
+remains an inert file unless the manifest identifies it as an archive.
+
+NSIS extraction validates the complete member list before streaming exact names
+into Go-owned staging files. Exact repeated names keep the last entry when all
+segment sizes are known. A single entry with an unknown size is streamed under
+the byte limits. Ambiguous duplicates, case collisions, links and unsafe paths
+fail before publication. Literal dollar signs are ordinary filename data.
+
+Limits are 100,000 entries, 4 GiB per member and 8 GiB total, including discarded
+duplicate entries; 16 MiB of inventory and 64 KiB of diagnostics per process;
+2 GiB of committed process-tree memory; three minutes per invocation and thirty
+minutes per archive. Cancellation terminates the managed process tree. These
+rules have no bypass switch and do not enable arbitrary native archive formats.

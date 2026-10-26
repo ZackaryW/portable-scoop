@@ -1,5 +1,6 @@
 // Package archive extracts supported containers through bounded, staged writes.
-// It never executes payloads or consults external extraction tools.
+// It never executes payloads. Only recognized NSIS content may use an explicitly
+// supplied, verified native reader; other formats retain their Go readers.
 package archive
 
 import (
@@ -30,11 +31,18 @@ var DefaultLimits = Limits{Files: 100000, TotalBytes: 8 << 30, MemberBytes: 4 <<
 type Request struct {
 	Source, Destination, Format, ExtractDir, ExtractTo string
 	Limits                                             Limits
+	// NSIS resolves the verified Store helper lazily, only for NSIS content.
+	NSIS func() (NSISReader, error)
 }
 
 func SafePath(s string) bool {
-	if !metadata.RelativePath(s) || len(s) > 1024 || strings.ContainsAny(s, "<>\"|?*`$\x00\r\n\t") {
+	if !metadata.RelativePath(s) || len(s) > 1024 || strings.ContainsAny(s, "<>\"|?*`\x00\r\n\t") {
 		return false
+	}
+	for _, c := range s {
+		if c < 32 || c == 127 {
+			return false
+		}
 	}
 	for _, p := range strings.Split(strings.ReplaceAll(s, `\`, "/"), "/") {
 		b := strings.ToUpper(strings.SplitN(p, ".", 2)[0])
@@ -218,9 +226,24 @@ func Extract(ctx context.Context, root string, q Request) error {
 		var signature [4]byte
 		if _, err := f.ReadAt(signature[:], 0); err == nil && (string(signature[:]) == "PK\x03\x04" || string(signature[:]) == "PK\x05\x06") {
 			q.Format = "zip"
+		} else if isNSIS(f) {
+			q.Format = "nsis"
 		}
 	}
 	switch q.Format {
+	case "nsis":
+		// The public format contract cannot select a native handler without
+		// content recognition, including callers outside the frozen backend.
+		if !isNSIS(f) || q.NSIS == nil {
+			return fmt.Errorf("NSIS content requires a managed Store reader")
+		}
+		reader, err := q.NSIS()
+		if err != nil {
+			return err
+		}
+		if err = s.extractNSIS(q.Source, reader); err != nil {
+			return err
+		}
 	case "zip":
 		z, err := zip.NewReader(ctxReaderAt{ctx, f}, info.Size())
 		if err != nil {

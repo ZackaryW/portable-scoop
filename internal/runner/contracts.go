@@ -18,6 +18,9 @@ type Command struct {
 	Environment []string
 	Directory   string
 	Streams     Streams
+	// MemoryLimit caps committed memory of the entire Windows process job.
+	// Zero preserves the ordinary runner policy without a memory cap.
+	MemoryLimit uint64
 }
 
 // ProcessRunner must distinguish a backend exit code from a launch error.

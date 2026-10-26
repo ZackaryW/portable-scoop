@@ -9,12 +9,47 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"portscoop/internal/compatibility"
 	"portscoop/internal/environment"
 	"portscoop/internal/runner"
 )
+
+func TestFrozenNSISHashGateAndInertExecutable(t *testing.T) {
+	for _, name := range []string{"installer.exe", "dl.7z"} {
+		t.Run(name, func(t *testing.T) {
+			local := managedFixture(t)
+			body := []byte("MZstub\xef\xbe\xad\xdeNullsoftInst")
+			fixtureFile(t, filepath.Join(local.Paths.Apps, "app", "1", name), body)
+			hash := fmt.Sprintf("%x", sha256.Sum256(body))
+			if name == "dl.7z" {
+				hash = strings.Repeat("0", 64)
+			}
+			data, _ := json.Marshal(map[string]any{"version": "1", "url": "https://example.invalid/installer.exe#/" + name, "hash": hash})
+			var m Manifest
+			json.Unmarshal(data, &m)
+			p, err := compatibility.Compile(m)
+			if err != nil {
+				t.Fatal(err)
+			}
+			request := filepath.Join(local.Paths.Temp, "portscoop-request-nsis.json")
+			writeExtractRequest(t, local, request, FrozenManifest{Manifest: p.Manifest, Downloads: p.Downloads})
+			err = extractRequest(context.Background(), local.Paths, local.Identity.ID, request, "app")
+			if name == "installer.exe" && err != nil {
+				t.Fatal("direct EXE must remain inert", err)
+			}
+			if name == "dl.7z" && (err == nil || !strings.Contains(err.Error(), "digest changed")) {
+				t.Fatal("digest must fail before helper resolution", err)
+			}
+			entries, _ := os.ReadDir(filepath.Join(local.Paths.Apps, "app", "1"))
+			if len(entries) != 1 || entries[0].Name() != name {
+				t.Fatal("changed package files", entries)
+			}
+		})
+	}
+}
 
 func extractionFixture(t *testing.T) (environment.Context, string, FrozenManifest) {
 	t.Helper()

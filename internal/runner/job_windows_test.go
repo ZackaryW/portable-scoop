@@ -1,6 +1,7 @@
 package runner_test
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -15,6 +16,34 @@ import (
 	"portscoop/internal/filelock"
 	"portscoop/internal/runner"
 )
+
+func TestJobMemoryChild(t *testing.T) {
+	if os.Getenv("PORTSCOOP_MEMORY_CHILD") != "1" {
+		return
+	}
+	small, err := windows.VirtualAlloc(0, 1<<20, windows.MEM_COMMIT|windows.MEM_RESERVE, windows.PAGE_READWRITE)
+	if err != nil {
+		t.Fatal("small allocation failed", err)
+	}
+	defer windows.VirtualFree(small, 0, windows.MEM_RELEASE)
+	large, err := windows.VirtualAlloc(0, 512<<20, windows.MEM_COMMIT|windows.MEM_RESERVE, windows.PAGE_READWRITE)
+	if err == nil {
+		windows.VirtualFree(large, 0, windows.MEM_RELEASE)
+		t.Fatal("allocation exceeded job memory cap")
+	}
+	fmt.Fprint(os.Stdout, "allocation constrained")
+}
+
+func TestJobMemoryLimitAppliesBeforeExecution(t *testing.T) {
+	exe, _ := os.Executable()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var output bytes.Buffer
+	code, err := (runner.Native{}).Run(ctx, runner.Command{Executable: exe, Arguments: []string{"-test.run=^TestJobMemoryChild$"}, Environment: append(os.Environ(), "PORTSCOOP_MEMORY_CHILD=1"), MemoryLimit: 256 << 20, Streams: runner.Streams{Out: &output, Err: &output}})
+	if err != nil || code != 0 || !strings.Contains(output.String(), "allocation constrained") {
+		t.Fatalf("memory constraint: code=%d err=%v output=%s", code, err, &output)
+	}
+}
 
 func lifecycleEnvironment(mode, directory string) []string {
 	var result []string
