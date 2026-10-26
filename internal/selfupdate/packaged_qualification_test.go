@@ -221,3 +221,34 @@ func TestPackagedManagedToolQualification(t *testing.T) {
 	}
 	t.Log("migrated Store installed an unchanged local fixture and ran its shim")
 }
+
+// Repair a failed application qualification through real Host maintenance,
+// retaining the existing apps and persistence for the resumed lifecycle check.
+func TestUpdateQualifiedApplicationStores(t *testing.T) {
+	root := os.Getenv("PORTSCOOP_APPLICATION_UPDATE_FIXTURE")
+	if root == "" {
+		t.Skip("requires existing disposable VM application fixture")
+	}
+	host := filepath.Join(root, "maintenance-host")
+	_, descriptor, err := runtimeinstall.VerifyDistribution(host, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	net := packagedNetwork{filepath.Join(root, "candidate.zip"), descriptor.Version}
+	doc := registry.Empty()
+	for _, name := range []string{"moved store", "second"} {
+		target, err := (Disk{}).Select(filepath.Join(root, name, "psp.exe"), true)
+		if err != nil {
+			t.Fatal(err)
+		}
+		doc.Entries[strings.ReplaceAll(name, " ", "-")] = registry.Entry{ID: target.ID, Path: target.Root}
+	}
+	h := HostMaintenance{Service: Service{Discovery: net, Downloads: net, Files: Disk{}, Clock: realClock{}, Locks: NativeLocker{}, Worker: unexpectedWorker{t}}, ReadRegistry: func() (registry.Document, error) { return doc, nil }, Resolve: (resolver.Discovery{Volumes: noVolumes{}}).Resolve}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+	result, err := h.Run(ctx, filepath.Join(host, "psp.exe"), Options{})
+	if err != nil || result.Code != 0 || strings.Count(result.Message, "Store runtime and managed backend updated") != 2 {
+		t.Fatalf("application Store maintenance: %+v %v", result, err)
+	}
+	t.Log(result.Message)
+}
